@@ -77,6 +77,60 @@ Sky1-Linux maintainers).
 
 - **[HW]** The mmhub SMMU nodes are `dma-coherent` in the Sky1-Linux tree.
 
+### 8.2.2 ACPI attachment (`CIXH5010`)
+
+**[HW]** Five ACPI devices with `_HID` `CIXH5010`, one per unit. Their
+`_CRS` carries the same resources as the devicetree node: one
+`Memory32Fixed` (the 128 KiB DPU window, §8.1) and one `Interrupt` (GSIV =
+SPI + 32, so 348, 350, 352, 354, 356). (Confirmed by a devicetree generated
+from the Orion O6's real ACPI tables, where these five devices appear at
+the DPU addresses with the DPU interrupts, mislabelled as USB.)
+
+The rest of the description is in `_DSD` (device-properties UUID
+`daffd814-6eba-4d8c-8a91-bc9bbf4aa301`), the hierarchical data-node
+extension, and the CIX tables:
+
+| Item | Where | Notes |
+|---|---|---|
+| Pipelines | Data-only child nodes whose names start with `pipeline` | Each has an integer `reg` = pipeline index. Every hardware pipeline must have one |
+| Output ports | Under each pipeline node: an optional `ports` node, then `port…` child nodes with integer `reg` | Port 0 is the output. Its endpoints 0 and 1 link to DP controller inputs (ACPI `_DSD` graph convention) |
+| `aclk` | `CLKT` entry with connection name `"aclk"` (Sky1 SoC spec 01 §1.4) | |
+| Pixel clock of pipeline k | `CLKT` entry on the DPU device whose connection name is **the pipeline node's name** | The vendor driver looks the clock up by that name |
+| Resets | `RSTL` entries named `"ip_reset"` and `"rcsu_reset"` | Optional under ACPI |
+| `aclk_freq_fixed`, `side_by_side_master`, `smart_aclk_freq`, `device-id`, `enabled_by_gop` | `_DSD` device properties | Same meaning as the DT properties (§8.3, §8.5, 06 §6.6) |
+| `pixel_per_cycle` | `_DSD` property of the device that owns the pipeline node | 1 or 2 |
+| Power | ACPI power resources / `_PS0` | No SCMI power-domain provider under ACPI (Sky1 SoC spec 01 §1.3.4) |
+
+> OPEN QUESTION: The exact names of the pipeline data nodes (and so of the
+> pixel-clock CLKT entries), and whether `aclk_freq_fixed` is a 32- or
+> 64-bit integer in the DSDT (the vendor driver tries both), need a DSDT
+> disassembly to confirm.
+
+### 8.2.3 DMA and coherency rules
+
+- **[HW]** The DPU addresses 40 bits.
+- **[HW]** The DPU is a **non-snooping** master: its layer fetches read the
+  system-level cache / DRAM and never snoop CPU or GPU caches. Every
+  scanout buffer must be visible in memory before it is flipped to:
+  - CPU-written buffers: map them write-combined (non-cacheable), or clean
+    the CPU caches over the buffer before the flip.
+  - GPU-rendered buffers: the GPU must use ACE-Lite with non-cacheable
+    memory attributes on Sky1 (Panthor spec 11.7); otherwise GPU L2
+    contents may not reach memory in time and the display shows stale
+    tiles.
+- **[HW]** Treat the DPU as non-coherent whatever the firmware's `_CCA`
+  says. The DPU's SMMU (mmhub) is itself `dma-coherent` for its own
+  page-table walks, which does not make the DPU's data reads coherent.
+- **[HW]** IORT: each DPU's five stream IDs (§8.2.1) map to the mmhub SMMU.
+  The firmware boot-splash range is an IORT reserved memory region that must
+  stay identity-mapped until takeover (§8.5).
+
+> OPEN QUESTION: The DPU's own `_CCA` value in the DSDT is not known. The
+> GPU's is 1 and wrong (Panthor spec 11.7); assume the DPU's may be too.
+
+- **[ABI]** *(vendor)* The DPU device exposes no render node. Exposing one
+  makes compositors pick the DPU instead of the GPU for rendering.
+
 ## 8.3 Clocks
 
 - **[POLICY]** *(vendor)* On the Orion O6, every DPU sets

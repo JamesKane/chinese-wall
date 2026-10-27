@@ -31,6 +31,13 @@ their per-core Arm generic timers stop, a global timer must wake them.
 - All four instances are disabled in the Orion O6 devicetree; nothing in
   the vendor tree uses them for timekeeping.
 
+> OPEN QUESTION: The vendor devicetree also places PWM0 at `0x04110000`
+> (4 KiB) and PWM1 at `0x04111000`, inside GPT 0's 8 KiB window. PWM0 is
+> used for the eDP backlight (sky1-dp-tx 04). Either the GPT addresses in
+> the vendor tree are wrong, or GPT 0 and the PWMs are the same block seen
+> two ways. Until a DSDT or hardware test settles it, do not use GPT 0
+> while the PWM is in use; prefer GPT 1–3.
+
 ## 3.2 Register map
 
 Each instance has two timers: **even** at instance base + `0x0000` (low 32

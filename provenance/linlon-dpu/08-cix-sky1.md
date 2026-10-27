@@ -22,3 +22,8 @@
   - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: hw/dp_component.c 1628-1696 (firmware takeover register sequence, mode comparison)
   - Sky1-Linux/linux-sky1 config/config.sky1 6184-6193 (DRM_LINLONDP_CLOCK_FIXED not set)
   - Not read: the Trilinear DPTX driver beyond file list and DT nodes; IORT table itself (only the patch author's summary)
+- Third pass, 2026-10-27 (sections 8.2.2, 8.2.3):
+  - Sky1-Linux/linux-sky1@57e018a tree/drivers/gpu/drm/cix/linlon-dp/linlondp_dev.c 455-592 (ACPI parse: pipeline data nodes, ports, pixel clock by node name, _DSD properties), 657-735 (aclk, ACPI path, 40-bit mask); linlondp_dev.h 72-78 (port numbers)
+  - patches/0116 (ACPI optional resets, no render node, device_property for enabled_by_gop)
+  - patches/0115, 0117 commit messages (DPU non-snooping), 0034 (dma-coherent SMMUs), 0038 (IORT SIDs, RMR)
+  - Sky1-Linux/acpi-to-dts-tools@9ddd22c examples/generated-o6-from-acpi.dts 526-575 (ACPI-derived CIXH5010 instances, MMIO, interrupts) (MIT)

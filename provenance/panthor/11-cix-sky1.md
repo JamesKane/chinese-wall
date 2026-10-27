@@ -21,3 +21,10 @@
   - drivers/gpu/drm/panthor/panthor_devfreq.c:140-250 (OPP table source selection)
   - grep of drivers/gpu/drm/panthor, drivers/gpu/drm/panfrost and the binding directory for "cix"/"sky1" (no hits)
 - Not read: any vendor (CIX/Radxa) BSP kernel, ACPI tables, or SCMI firmware. "MC10" core count and the Sky1/CI-700 interconnect identity are public product information, not taken from the source.
+- Second pass, 2026-10-27 (sections 11.1 arch minor, 11.4-11.11 rewritten), Sky1-Linux sources (see SOURCE-BASELINE.md):
+  - Sky1-Linux/linux-sky1@57e018a patches/0006 (whole: RCSU/GPU resource order, vendor clock names, backup clocks, two PM domains, gpu_reset, power-up order, PGCTRL 0x218, harvesting 0x304/0x550555, IRQ names, SYSC_PBHA_OVERRIDE/SYSC_ALLOC offsets and values, 0x3068-0x307C writes)
+  - patches/0015, 0016 (OPP levels, DCS levels), 0017, 0023 (firmware SCMI overload, fast-channel rejection, rate-limit/backoff values) - commit messages and diffs
+  - patches/0053 (CIXH5000, positional ACPI IRQs), 0096 (ACPI power-on via SMC, gpu_core perf domain name, optional resets, 5-step sequence attribution, 6 OPP levels)
+  - patches/0115 (_CCA=1 override, MCFG OEM CIXTEK/SKY1EDK2, DPU non-snooping rationale), 0117 (ACE-Lite, shareable-cache bit 5, NC memattr without IOMMU, coherent_walk only for ACE)
+  - Sky1-Linux/linux@665339c sky1.dtsi 573-575 (protected region), 3072-3110 (GPU node: reg, irqs, clocks, resets, power-domains, system-coherency, pbha int_id_override) (BSD-3-Clause)
+  - Sky1-Linux/sky1-firmware@dd81690747ddb092bcc2a221daa0f8f679ee4bc4 README.md and debian/rules (arch12.8 install path)

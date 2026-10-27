@@ -78,3 +78,12 @@ Same mainline baseline and Sky1-Linux revisions as above, plus:
 
 No DSDT/SSDT/GTDT binaries were available.
 
+
+## Priority 2 sources (Panthor 11, Linlon DPU 08, sky1-dp-tx)
+
+| Source | Revision | Paths read | License |
+|---|---|---|---|
+| `Sky1-Linux/linux-sky1` | `57e018a` | patches 0006, 0015, 0016, 0017, 0023, 0053, 0096, 0115, 0116, 0117; `linlon-dp` ACPI parse path; `dptx/` driver and DP/PHY patches (sky1-dp-tx) | GPL-2.0 |
+| `Sky1-Linux/linux` branch `main` | `665339c` | `sky1.dtsi` GPU node, protected region; DP/PHY/panel nodes | BSD-3-Clause |
+| `Sky1-Linux/sky1-firmware` | `dd81690747ddb092bcc2a221daa0f8f679ee4bc4` | `README.md`, `debian/rules` (GPU firmware install path only; binaries not inspected) | packaging; firmware proprietary |
+| `Sky1-Linux/acpi-to-dts-tools` | `9ddd22c` | `examples/generated-o6-from-acpi.dts` | MIT |

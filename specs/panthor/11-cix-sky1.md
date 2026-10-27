@@ -7,17 +7,14 @@ around. It has two parts:
 
 - **11.1–11.3:** what is different about an arch 12 GPU, as a checklist
   against the arch-generic text in 02–07.
-- **11.4–11.8:** Sky1 platform resources (power domains, performance
-  domains, clocks, resets) and the gaps that the baseline source does not
-  fill.
+- **11.4–11.10:** Sky1 platform integration: resources, ACPI probe,
+  power-up sequence, core harvesting, coherency and memory attributes,
+  system-cache allocation, DVFS.
 
-> **Status: partial.** At the source baseline, mainline has **no Sky1 GPU
-> devicetree node, no binding entry for a Sky1 compatible, and no Sky1 entry
-> in the driver's SoC match table**. Everything below about the GPU block
-> itself (MMIO base, interrupt numbers, which clocks and domains it consumes)
-> is therefore an OPEN QUESTION. What *is* fixed is the set of Sky1 platform
-> identifiers the GPU will have to use, and the generic driver behavior that
-> applies once the node exists.
+Mainline has no Sky1 GPU node at the baseline. Sections 11.4 onward come
+from the CIX vendor devicetree and the Sky1-Linux Panthor patches (CIX
+vendor code adapted to Panthor), and are marked *(vendor)* where the fact
+comes only from there.
 
 ## 11.1 GPU identification
 
@@ -36,10 +33,11 @@ around. It has two parts:
 - **[ABI]** `GPU_FEATURES` is passed to userspace unchanged (10). Do not mask
   the ray bits.
 
-> OPEN QUESTION: The arch minor of the Sky1 part is not stated anywhere in the
-> baseline source. The firmware path above assumes `GPU_ID.ARCH_MINOR` = 8,
-> which is the only arch 12 image the driver declares. If the silicon reports
-> a different minor, no matching image is known and probe fails (05 §5.1).
+- **[HW]** *(vendor)* The Sky1 firmware package installs the GPU image as
+  `arm/mali/arch12.8/mali_csffw.bin`, stating the part is arch 12.8. So
+  `GPU_ID.ARCH_MINOR` = 8 is expected. (The package also places symlinks at
+  `arm/mali/mali_csffw.bin` and `mali_csffw.bin`.) The image is Arm
+  proprietary, redistributable.
 
 > OPEN QUESTION: The VERSION_MAJOR/MINOR/STATUS fields of `GPU_ID` (silicon
 > revision) for Sky1 are unknown. No revision-specific workaround exists in
@@ -63,8 +61,8 @@ architecture. A clean-room driver that already handles the Mali-G610 needs
 
 **[HW]** The only arch-gated register step that *becomes available* on arch
 12 (it is skipped on arch 10) is the custom L2 address hash (`ASN_HASH[0..2]`
-plus `L2_CONFIG` bit 24, 03 §3.4.1 step 2). Whether Sky1 needs it is open
-(11.6).
+plus `L2_CONFIG` bit 24, 03 §3.4.1 step 2). Sky1 does not program it
+(11.8.3).
 
 ## 11.3 Firmware interface version on arch 12
 
@@ -81,192 +79,230 @@ plus `L2_CONFIG` bit 24, 03 §3.4.1 step 2). Whether Sky1 needs it is open
 > image is not recorded in the source. A driver written to support every
 > layout listed in 06 §6.2.3 does not need to know it in advance.
 
-## 11.4 Devicetree status
 
-- **[HW]** The binding (`arm,mali-valhall-csf`) requires a SoC-specific string
-  before the generic one, and lists only `mediatek,mt8196-mali`,
-  `nxp,imx95-mali` and `rockchip,rk3588-mali`. A Sky1 node needs a new SoC
-  string (presumably `cix,sky1-mali`, not yet defined) followed by
-  `"arm,mali-valhall-csf"`.
-- **[POLICY]** Because the driver also matches the generic string with no
-  per-SoC data, a Sky1 node with any SoC string plus the generic string would
-  bind with default behavior: no ASN hash, no special quirks.
-- The binding already permits what Sky1 is likely to need: up to 5
-  `power-domains` with names, 1–3 clocks named `"core"`, `"coregroup"`,
-  `"stacks"`, and optional `dma-coherent`.
+## 11.4 Resources and attachment
 
-> OPEN QUESTION: MMIO base and size, the three GIC SPI numbers and their
-> trigger type, and whether the GPU sits behind an SMMU are not described in
-> the baseline source. They must come from a later upstream devicetree, the
-> vendor's firmware tables, or the SoC documentation.
+| Item | Value |
+|---|---|
+| ACPI `_HID` | `CIXH5000` |
+| DT compatible *(vendor)* | `"arm,mali-valhall"` (not the mainline `arm,mali-valhall-csf` binding) |
+| MMIO 0: GPU RCSU | `0x15000000`, 64 KiB (`reg-names` `"gpu_rcsu"`) |
+| MMIO 1: GPU registers | `0x15010000`, `0x480000` bytes (`"gpu"`) |
+| Interrupts (GIC SPI / ACPI GSIV, level-high) | JOB 237 / 269, MMU 238 / 270, GPU 239 / 271 |
+| Power domain | SCMI power domain 21 (TF-A SMC agent, Sky1 SoC spec 01 §1.3) |
+| Performance domain | SCMI perf domain 0, firmware name `"gpu_core"` (mailbox agent) |
+| IOMMU | None in the vendor DT (no `iommus`); Sky1-Linux treats it as not IOMMU-mapped |
+| Protected memory *(vendor)* | Reserved region at `0xBCE00000` for the vendor kbase driver's protected mode; not used by Panthor |
 
-> OPEN QUESTION: Sky1 boards often boot with ACPI rather than a devicetree.
-> The driver described in 00–10 is devicetree-only. No ACPI identifier or
-> resource layout for the GPU appears in the source.
+- **[HW]** Resource order matters: **resource 0 is the RCSU**, resource 1
+  the GPU. This holds under DT and ACPI.
+- **[HW]** Interrupt names: the vendor DT uses upper-case `"JOB"`, `"MMU"`,
+  `"GPU"` (mainline binding: lower-case). Under ACPI the interrupts are
+  **positional**: `_CRS` interrupt 0 = JOB, 1 = MMU, 2 = GPU.
+- **[POLICY]** *(vendor)* Sky1-Linux detects Sky1 by the `CIXH5000` HID
+  under ACPI or the `arm,mali-valhall` compatible under DT, and applies all
+  Sky1 steps below only then.
 
-## 11.5 Sky1 platform resources for the GPU
+### 11.4.1 Clocks
 
-These identifiers are fixed by the public Sky1 devicetree headers and SoC
-file. They are what a Sky1 GPU node is expected to reference.
-
-### 11.5.1 Power and performance domains
-
-Sky1 exposes power and DVFS through two SCMI agents (SCMI is a public Arm
-specification, DEN0056):
-
-| SCMI agent | Transport | Protocol | Role |
+| Vendor name | SCMI clock | Mainline-binding name | Use |
 |---|---|---|---|
-| Power-management processor | Mailbox (channel 8 on the AP→PM and PM→AP mailboxes), shared memory at `0x06590000` (TX) and `0x065A0000` (RX), 128 bytes each | `0x13` (Performance domain management) | DVFS. Each performance domain is used as a power-domain provider with one cell |
-| | | `0x14` (Clock management) | Clocks. One cell |
-| Trusted firmware | SMC, function ID `0xC2000001`, own shared memory | `0x11` (Power domain management) | Device power on/off. One cell |
+| `gpu_clk_core` | `CLK_TREE_GPU_CLK_CORE` (31) | `core` (or unnamed first clock) | Required |
+| `gpu_clk_stacks` | `CLK_TREE_GPU_CLK_STACKS` (32) | `stacks` | Optional |
+| `gpu_clk_200M` | `CLK_TREE_GPU_CLK_200M` (272) | — | Optional "backup" clock, enabled with the others |
+| `gpu_clk_400M` | `CLK_TREE_GPU_CLK_400M` (30) | — | Optional "backup" clock |
 
-GPU-related domain IDs:
+- **[HW]** Under ACPI the clock names come from the DSDT `CLKT`, which uses
+  the vendor names (Sky1 SoC spec 01 §1.4).
+- **[POLICY]** Do not set GPU clock rates directly; DVFS goes through the
+  performance domain (11.10).
 
-| Identifier | Value | Provider | Meaning |
-|---|---|---|---|
-| `SKY1_PD_GPU` | 21 | SCMI power domain (SMC agent) | GPU power island on/off |
-| `SKY1_PERF_GPU_CORE` | 0 | SCMI performance (mailbox agent) | GPU shader-core clock/voltage domain |
-| `SKY1_PERF_GPU_TOP` | 1 | SCMI performance (mailbox agent) | GPU top-level clock/voltage domain (presumably the non-shader logic, not confirmed) |
+> OPEN QUESTION: What the 200 MHz and 400 MHz "backup" clocks feed is not
+> stated. Enabling them with the core clock is the safe choice.
 
-- **[HW]** The GPU power domain must be on before any GPU register access,
-  as on RK3588 (01 §1.4.2). On Sky1 that is an SCMI `POWER_STATE_SET` on
-  domain 21 through the trusted-firmware agent. No GPU regulator appears in
-  the Sky1 board files, which suggests the firmware sequences the rail and
-  island itself (not confirmed).
-- **[HW]** Frequency and voltage are owned by the power-management processor
-  through **two** performance domains. The OS requests a level per domain
-  (SCMI `PERFORMANCE_LEVEL_SET`), and the firmware picks the clock and
-  voltage. The OS does not set a GPU clock rate directly or drive
-  `mali-supply`/`sram-supply`.
-- On Sky1 the CPU clusters already use the same pattern (each CPU node
-  references a performance domain with the name `"perf"`), which is the
-  public precedent for how a GPU node would reference its two performance
-  domains.
+### 11.4.2 Resets
 
-> OPEN QUESTION: The relation between the two GPU performance domains (must
-> TOP be at or above some level whenever CORE is raised, and are they meant
-> to be moved together) is not described. A safe policy is to request both
-> together from one combined operating-point table, raising TOP first and
-> lowering it last.
-
-> OPEN QUESTION: The level tables for domains 0 and 1 are not in the source.
-> They are discovered at runtime with SCMI `PERFORMANCE_DESCRIBE_LEVELS`.
-> Whether the levels are reported in kHz or abstract units depends on the
-> firmware's `PERFORMANCE_DOMAIN_ATTRIBUTES` reply.
-
-### 11.5.2 Interaction with the driver's DVFS model (01 §1.5)
-
-01 §1.5 describes two DVFS modes: a DT operating-point table with a
-regulator, or a single power-domain provider that owns performance
-(MT8196). Sky1 fits neither exactly:
-
-- **[POLICY]** Linux attaches *all* listed power domains when there is more
-  than one, and links them to the GPU device so they switch together (01
-  §1.4.1 step 2). The device itself then has no operating-point table from
-  any one domain. With no DT OPP table either, Linux's DVFS setup fails and
-  so does probe.
-- A clean-room driver for Sky1 therefore needs one of:
-  1. a combined operating-point table (in DT or in the driver) whose entries
-     each name a level for both performance domains, applied by sending one
-     SCMI level request per domain; or
-  2. no DVFS: leave both performance domains at their firmware default
-     level and skip the governor.
-- **[HW]** Whatever the mechanism, the busy/idle accounting of 01 §1.5.2 is
-  unchanged. Only the "apply this frequency" step differs.
-
-> OPEN QUESTION: Whether a Sky1 GPU node will list `SKY1_PD_GPU` and the two
-> performance domains together, or wrap them in a single combined provider,
-> is a future upstream decision. This spec cannot predict it.
-
-### 11.5.3 Clocks
-
-The Sky1 clock IDs (consumed through the SCMI clock protocol, `0x14`) that
-belong to the GPU:
-
-| Identifier | Value | Likely binding name |
+| Name | S5 index | Word / bit |
 |---|---|---|
-| `CLK_TREE_GPU_CLK_CORE` | 31 | `"core"` |
-| `CLK_TREE_GPU_CLK_STACKS` | 32 | `"stacks"` |
-| `CLK_TREE_GPU_CLK_400M` | 30 | unknown |
-| `CLK_TREE_GPU_CLK_200M` | 272 | unknown |
-| `CLK_TREE_GPUTOP_PLL` | 230 | source PLL for the TOP domain |
-| `CLK_TREE_GPUCORE_PLL` | 231 | source PLL for the CORE domain |
+| `"gpu_reset"` | 9 (`SKY1_GPU_RESET_N`) | `0x400` bit 6 |
+| `"gpu_rcsu_reset"` | 119 (`SKY1_GPU_RCSU_RESET_N`) | `0x800` bit 28 |
 
-- **[HW]** As on every platform, the driver must have the `"core"` clock
-  enabled before touching the GPU. `"stacks"` and `"coregroup"` are optional
-  (01 §1.1.3).
-- **[POLICY]** When performance domains own DVFS, the driver should only
-  gate clocks and must not set their rates. Setting a rate through the clock
-  protocol behind the performance firmware's back may conflict with its
-  level choice.
+- **[HW]** Active-low (Sky1 SoC spec 02 §2.1). Only `gpu_reset` is pulsed
+  by the driver (11.5). `gpu_rcsu_reset` is listed but never toggled.
+- **[POLICY]** Under ACPI the resets come from the DSDT `RSTL` and are
+  treated as optional: if absent, the reset pulse is skipped.
 
-> OPEN QUESTION: Which of these clocks a Sky1 GPU node would list, and in
-> which order, is not in the source. The "likely binding name" column is a
-> guess from the identifier names. The 400 MHz and 200 MHz clocks may be bus
-> or APB clocks that the power-domain firmware already manages.
+## 11.5 Power-up sequence
 
-### 11.5.4 Resets
+**[HW]** *(vendor, attributed to the CIX GPU development guide)* Before any
+GPU register access:
 
-The Sky1 S5 system controller (`cix,sky1-s5-system-control`, MMIO
-`0x16000000`, 4 KiB) has two GPU reset lines:
+1. **Power domain on.** SCMI `POWER_STATE_SET` domain 21, state 0 (on).
+   This also configures the interconnect's non-secure access permissions
+   for the GPU. Under DT the SMC SCMI agent does it. Under ACPI the DSDT has
+   no SCMI provider, so issue the SMC call directly (Sky1 SoC spec 01
+   §1.3.2).
+2. **Clocks on** (11.4.1).
+3. **Assert `gpu_reset`.** Wait 10–20 µs.
+4. **Release `gpu_reset`.**
+5. **Enable Q-channel clock gating:** set bit 0 of RCSU `PGCTRL`
+   (RCSU + `0x218`), read-modify-write.
 
-| Identifier | Index | Register offset | Bit |
-|---|---|---|---|
-| `SKY1_GPU_RESET_N` | 9 | `0x400` (reset group 0, S0 domain word 0) | 6 |
-| `SKY1_GPU_RCSU_RESET_N` | 119 | `0x800` (reset group 0, RCSU word) | 28 |
+Then continue with the generic sequence (GPU soft reset, 03 §3.3).
 
-- **[HW]** Both lines are active-low: clearing the bit holds the block in
-  reset, setting it releases reset. Reading the bit as 0 means "in reset".
-- **[POLICY]** The Sky1 reset driver waits 50–100 µs after each assert or
-  deassert.
-- **[POLICY]** The GPU driver uses **no** external reset controller (01
-  §1.1.3). GPU recovery is done through the `GPU_CMD` soft reset (03 §3.3). On Sky1 these lines are expected to be handled by power-domain
-  firmware when the island is switched, not by the GPU driver.
+- **[POLICY]** Linux registers the SCMI power-domain provider early on
+  Sky1 because step 1 must precede the first GPU register access, and the
+  access-permission setup is part of it.
 
-> OPEN QUESTION: "RCSU" is not expanded anywhere in the source. Whether the
-> OS must ever deassert either GPU reset line itself (for example when
-> firmware leaves the GPU in reset at handoff) is unknown.
+## 11.6 Core harvesting
 
-## 11.6 Coherency and L2 address hash
+**[HW]** Some shader cores may be fused off. The GPU's own
+`SHADER_PRESENT` does not reflect that; the RCSU does:
 
-- **[HW]** Coherency selection follows 01 §1.6 unchanged: ACE-Lite only if
-  the platform marks the GPU `dma-coherent` *and* `COHERENCY_FEATURES` bit 0
-  is set. Otherwise protocol 31 (none) and full CPU cache maintenance.
-- Sky1 has an Arm CI-700 coherent interconnect (the reset and
-  performance-domain maps both name a "CI700" block), so an I/O-coherent
-  GPU port is plausible.
+1. Read v = RCSU + `0x304`.
+2. available = NOT((v AND `0x0FFFFFF0`) >> 4) AND `0x00550555`.
+3. Use `SHADER_PRESENT` AND available as the shader-present mask everywhere
+   (core power masks, userspace queries).
 
-> OPEN QUESTION: Whether the Sky1 GPU is I/O-coherent is not stated in the
-> source. Until confirmed, treat it as **non-coherent**. That is always safe
-> (it costs cache maintenance, not correctness). Marking a non-coherent
-> device coherent corrupts memory.
+`0x00550555` is the full part's shader-present pattern: 10 cores at bit
+positions 0, 2, 4, 6, 8, 10, 16, 18, 20, 22. A set bit in the fuse field
+`[27:4]` removes the core at that bit position.
 
-> OPEN QUESTION: Whether Sky1 needs a custom `ASN_HASH` (01 §1.3) to match
-> its interconnect's address striping is not stated. Without one, the GPU
-> uses its built-in hash. A wrong hash is expected to cost performance, not
-> correctness, but this is not proven.
+- **[ABI]** Userspace sees the reduced mask as the shader-present value.
 
-## 11.7 Core groups and L2
+## 11.7 Coherency and memory attributes
+
+- **[HW]** The ACPI DSDT declares the GPU **coherent** (`_CCA` = 1). That is
+  **wrong** for how Sky1 shares memory: the display processor (DPU) is a
+  non-snooping master that reads scanout buffers straight from the system
+  cache / DRAM. With CPU-side DMA treated as coherent, cache maintenance is
+  skipped and the display shows stale tiles.
+- **[HW]** Treat the GPU as **non-coherent for CPU DMA purposes** (do cache
+  maintenance, map buffers write-combined) regardless of `_CCA`.
+  Sky1-Linux overrides `_CCA` for `CIXH5000` when the MCFG table has OEM ID
+  `CIXTEK` and OEM table ID `SKY1EDK2`. The vendor DT has
+  `system-coherency = <0>` and no `dma-coherent`.
+- **[HW]** *(vendor)* GPU bus protocol: program `COHERENCY_PROTOCOL` = 0
+  (**ACE-Lite**), not 31 (none). With ACE-Lite, GPU L2 evictions go through
+  the interconnect's home nodes into the system-level cache, where the DPU
+  can see them. If `COHERENCY_FEATURES` reports the shareable-cache bit
+  (bit 5), also set bit 5 in `COHERENCY_PROTOCOL`. The GPU hardware also
+  supports full ACE, but Sky1 does not use it.
+- **[HW]** *(vendor)* Memory attributes: because the GPU has **no IOMMU**
+  to override attributes and is not fully coherent, map GPU memory as
+  **inner and outer non-cacheable**, with the GPU's internal-shareable
+  ("Midgard inner") shareability and no explicit allocation hints. This
+  replaces the cached attribute the generic driver would derive from the
+  page-table MAIR (04 §4.5). ACE-Lite alone does not guarantee the DPU sees
+  GPU writes in time.
+- **[HW]** Page-table walks are not coherent: write page tables with CPU
+  cache maintenance (as for the non-coherent case in 04).
+
+## 11.8 System-level cache allocation (PBHA)
+
+### 11.8.1 Registers
+
+These are arch-12 GPU-control registers that the generic driver does not
+use:
+
+| Offset (GPU block) | Name | Meaning |
+|---|---|---|
+| `0x320 + 4n`, n = 0–3 | `SYSC_PBHA_OVERRIDE<n>` | Page-based hardware attribute override |
+| `0x340 + 4n`, n = 0–7 | `SYSC_ALLOC<n>` | System-cache allocation policy, one byte per AXI ID: byte k of `SYSC_ALLOC<n>` governs ID 4n + k |
+
+### 11.8.2 Sky1 values
+
+**[HW]** *(vendor)* Before powering the L2 (03 §3.4.1), write:
+
+| Register | Value |
+|---|---|
+| `SYSC_PBHA_OVERRIDE3` | `0x22000000` |
+| `SYSC_ALLOC0` | `0x00230000` |
+| `SYSC_ALLOC1` | `0x00000023` |
+| `SYSC_ALLOC2` | `0x00000000` |
+| `SYSC_ALLOC3` | `0x00000000` |
+| `SYSC_ALLOC4` | `0x00523222` |
+| `SYSC_ALLOC5` | `0x00523200` |
+| `SYSC_ALLOC6` | `0x00000022` |
+| `SYSC_ALLOC7` | `0x00000032` |
+
+The same allocation values appear in the vendor devicetree as
+`pbha { int_id_override = <2 0x23>, <4 0x23>, <16 0x22>, <17 0x32>,
+<18 0x52>, <21 0x32>, <22 0x52>, <24 0x22>, <28 0x32>; }`: pairs of
+(AXI ID, policy byte), which pack into the `SYSC_ALLOC` words above.
+
+**[HW]** *(vendor)* Also write, for the performance counters of the
+load/store memory events:
+
+| Offset | Value |
+|---|---|
+| `0x3068` | `0x00000001` |
+| `0x306C`, `0x3070`, `0x3074`, `0x307C` | `0xFFFFFFFF` |
+
+> OPEN QUESTION: The meaning of each policy byte (0x22, 0x23, 0x32, 0x52)
+> and of `SYSC_PBHA_OVERRIDE3` is not documented. They are taken as opaque
+> platform tuning. Omitting them is expected to cost performance (system
+> cache use), not correctness, but this is not proven.
+
+> OPEN QUESTION: Which block the `0x3068`–`0x307C` registers belong to is
+> not named. They only affect counters; they can be skipped.
+
+### 11.8.3 Address hash
+
+**[POLICY]** No Sky1 code programs `ASN_HASH` / `L2_CONFIG` bit 24. Use the
+GPU's built-in hash.
+
+## 11.9 Core groups and L2
 
 - **[POLICY]** The driver powers only bit 0 of `L2_PRESENT` (03 §3.4.1).
-- A single-bit `L2_PRESENT` is expected even with 10 shader cores, because
-  CSF GPUs slice one L2 internally instead of using several core groups.
-  This expectation is not stated in the source.
+- A single-bit `L2_PRESENT` is expected; no Sky1 code handles more than one
+  L2 slice.
 
-> OPEN QUESTION: If the Sky1 GPU reports more than one bit in `L2_PRESENT`,
-> the driver as specified runs at reduced width. Log `L2_PRESENT` and
-> `SHADER_PRESENT` at bring-up to confirm.
+> OPEN QUESTION: Not confirmed on hardware by any source read. Log
+> `L2_PRESENT` and `SHADER_PRESENT` at bring-up.
 
-## 11.8 Bring-up checklist
+## 11.10 DVFS
 
-1. Get the GPU node data (11.4) from a source the clean room may use.
-2. Turn on SCMI power domain 21 through the SMC agent (11.5.1).
-3. Enable the `"core"` clock (and `"stacks"` if listed) through the SCMI
-   clock protocol, without setting rates (11.5.3).
-4. Read `GPU_ID` and check arch major 12, product major 0. Read
-   `SHADER_PRESENT` (expect 10 bits), `L2_PRESENT` (expect 1 bit) and
-   `GPU_FEATURES` (expect bit 2) (11.1, 11.7).
-5. Select coherency protocol 31 unless coherency is confirmed (11.6).
-6. Power the L2 and load `arm/mali/arch12.8/mali_csffw.bin` (03 §3.4, 05).
-7. Read `GLB_VERSION` and use the matching interface layout (11.3).
-8. Bring up DVFS last, or leave it off at first (11.5.2).
+- **[HW]** Frequency and voltage are owned by the power-management
+  processor. The OS requests levels on SCMI performance domain 0
+  (`"gpu_core"`) with `PERFORMANCE_LEVEL_SET`. No clock rate is set and no
+  regulator is driven. (The vendor DT's `gpu-microvolt = <820000>` is for
+  the vendor kbase driver's power model only.)
+- **[HW]** Levels are discovered with `PERFORMANCE_DESCRIBE_LEVELS`.
+  Reported by Sky1-Linux: under ACPI 6 levels from 72 MHz to 1000 MHz;
+  the vendor guide lists 350, 600, 800 and 1000 MHz as normal levels, plus
+  72 MHz (2 cores active) and 216 MHz (6 cores active) as **dynamic core
+  scaling** levels.
+- **[HW]** The two lowest levels are only valid if the driver also limits
+  active shader cores to 2 or 6. A driver without core scaling must not
+  select them.
+- **[HW]** *(vendor)* Firmware stability: the PM firmware serves all 12
+  performance domains over one mailbox channel and falls behind under
+  frequent requests; the SCMI channel can then lock up for every user
+  (clocks and resets included). Firmware advertises fast channels but
+  rejects `DESCRIBE_FASTCHANNEL`. Therefore:
+  - **[POLICY]** do not resend a level that is already set;
+  - **[POLICY]** send at most one level change per 100 ms;
+  - **[POLICY]** on errors back off exponentially (0.5 s up to 4 s); after
+    3 consecutive failures, move to a mid-range level;
+  - **[POLICY]** use a governor sampling period of 100 ms.
+- **[HW]** Performance domain 1 (GPU top) is not used by any Sky1 driver.
+
+> OPEN QUESTION: Whether the 72/216 MHz levels are included in what
+> firmware reports to the OS (the ACPI report says 6 levels, which suggests
+> yes) must be checked, and those levels filtered out unless core scaling
+> is implemented.
+
+## 11.11 Bring-up checklist
+
+1. Power domain 21 on (SMC SCMI), clocks on, pulse `gpu_reset`, set RCSU
+   `PGCTRL` bit 0 (11.5).
+2. Read `GPU_ID` (expect arch 12.8, product major 0), `SHADER_PRESENT`, and
+   apply the RCSU harvesting mask (11.6).
+3. `COHERENCY_PROTOCOL` = ACE-Lite (+ bit 5 if supported). CPU-side:
+   non-coherent DMA, write-combined mappings. GPU memory attributes:
+   non-cacheable (11.7).
+4. Program `SYSC_PBHA_OVERRIDE3` and `SYSC_ALLOC0–7` (11.8), then power the
+   L2 and load `arm/mali/arch12.8/mali_csffw.bin`.
+5. Read `GLB_VERSION` and use the matching interface layout (11.3).
+6. DVFS last, rate-limited, without the core-scaling levels (11.10).
