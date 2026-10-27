@@ -27,6 +27,7 @@ Writing rules are in [CLAUDE.md](CLAUDE.md). The upstream revision is in
 |---|---|---|
 | [Panthor](specs/panthor/README.md) | Arm Mali CSF GPUs (Mali-G610 in Rockchip RK3588; Immortalis-G720 in CIX Sky1) | In progress |
 | [Linlon DPU](specs/linlon-dpu/README.md) | Arm China Linlon-D6 display processor (Mali-D71 register model) in CIX Sky1 | Draft |
+| [Sky1 SoC](specs/sky1-soc/README.md) | CIX Sky1 mailbox/SCMI, clocks, power domains, resets/RCSU, GPT timer | Draft |
 
 ## Reviewing a spec before release
 

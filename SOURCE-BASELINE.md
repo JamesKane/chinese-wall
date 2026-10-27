@@ -66,3 +66,15 @@ Out-of-tree sources published by the Sky1-Linux project
 
 Facts taken only from these sources are marked *(vendor)* in the specs.
 
+## Sky1 SoC infrastructure scope (specs/sky1-soc)
+
+Same mainline baseline and Sky1-Linux revisions as above, plus:
+
+| Source | Revision | Paths read | License |
+|---|---|---|---|
+| mainline | baseline | `drivers/mailbox/cix-mailbox.c`, `drivers/reset/reset-sky1.c`, `Documentation/devicetree/bindings/mailbox/cix,sky1-mbox.yaml`, `include/dt-bindings/reset/cix,sky1-*.h`, `drivers/firmware/arm_scmi/transports/smc.c` | GPL-2.0 / dual for bindings |
+| `Sky1-Linux/linux-sky1` | `57e018a` | patches 0002, 0003, 0004, 0006, 0010, 0061, 0063, 0070–0077, 0080, 0091, 0092, 0096, 0106, 0107 | GPL-2.0 |
+| `Sky1-Linux/acpi-to-dts-tools` | `9ddd22c9926d329a2037a800e99545d09f493b51` | `docs/ACPI-to-DTS-Mapping.md` | MIT |
+
+No DSDT/SSDT/GTDT binaries were available.
+
