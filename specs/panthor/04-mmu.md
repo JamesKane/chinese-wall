@@ -719,3 +719,6 @@ touched after this.
   protocol (4.1).
 - **RK3588 (Mali-G610, arch 10):** non-coherent. No SoC-specific MMU handling
   exists in the driver.
+- **CIX Sky1 (Immortalis-G720, arch 12):** coherency not established. Treat
+  as non-coherent until confirmed (11 §11.6). No SoC-specific MMU handling
+  exists in the driver.

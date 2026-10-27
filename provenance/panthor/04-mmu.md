@@ -35,3 +35,4 @@
 - Observations for the dirty room (not in spec as bugs):
   - pack_region_range clears bits below region_width rather than below region_width+1, so when the 32 KiB minimum clamps, the recorded locked_region.start can be 16 KiB above the hardware-locked base; later "already inside locked region" checks use the recorded value.
   - panthor_vm_active on a VM that still holds a slot but was disabled by panthor_vm_declare_unusable (not in faulty_mask) takes the fast path and does not re-enable the AS.
+- Updated 2026-10-27: Sky1 bullet in §4.12; see 11-cix-sky1 provenance.

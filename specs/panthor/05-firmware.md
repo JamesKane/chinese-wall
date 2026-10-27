@@ -53,7 +53,7 @@ All multi-byte fields in the firmware image and in shared memory are
 | `arm/mali/arch10.10/mali_csffw.bin` | Arch 10.10 |
 | `arm/mali/arch10.12/mali_csffw.bin` | Arch 10.12 |
 | `arm/mali/arch11.8/mali_csffw.bin` | Arch 11.8 (G615/G715 family) |
-| `arm/mali/arch12.8/mali_csffw.bin` | Arch 12.8 (G620/G720 family) |
+| `arm/mali/arch12.8/mali_csffw.bin` | Arch 12.8 (G620/G720 family, expected for **CIX Sky1**, see 11 §11.1) |
 | `arm/mali/arch13.8/mali_csffw.bin` | Arch 13.8 (G625/G725 family) |
 | `arm/mali/arch14.8/mali_csffw.bin` | Arch 14.8 (Mali-G1 family) |
 

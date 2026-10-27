@@ -2,7 +2,8 @@
 
 Target: Arm Mali GPUs with the Command Stream Frontend (CSF). These are
 architecture majors 10–14 (Valhall CSF and 5th-gen), for example the
-**Mali-G610 MP4 in the Rockchip RK3588/RK3588S**.
+**Mali-G610 MP4 in the Rockchip RK3588/RK3588S**. The **Immortalis-G720 in the
+CIX Sky1** is a second target; its differences are collected in section 11.
 
 These documents describe hardware, firmware and userspace-ABI behavior so that
 a driver can be written without looking at the Linux source. Each statement is
@@ -25,3 +26,4 @@ tagged:
 | 08 | [Tiler heap management](08-heap.md) | draft |
 | 09 | [Buffer objects and memory management](09-memory.md) | draft |
 | 10 | [Userspace ABI (ioctls)](10-uapi.md) | draft |
+| 11 | [CIX Sky1 (Immortalis-G720) integration](11-cix-sky1.md) | partial: no upstream GPU node at baseline |

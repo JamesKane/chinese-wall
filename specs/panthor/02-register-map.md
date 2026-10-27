@@ -131,7 +131,7 @@ Known products, keyed by (ARCH_MAJOR, PRODUCT_MAJOR):
 | (10, 7) | **Mali-G610 (RK3588)** |
 | (11, 2) | Mali-G715-Immortalis if ≥10 cores and ray intersection; Mali-G715 if ≥7 cores; otherwise Mali-G615 |
 | (11, 3) | Mali-G615 |
-| (12, 0) | Mali-G720-Immortalis if ≥10 cores and ray intersection; Mali-G720 if ≥6 cores; otherwise Mali-G620 |
+| (12, 0) | Mali-G720-Immortalis if ≥10 cores and ray intersection; Mali-G720 if ≥6 cores; otherwise Mali-G620. **CIX Sky1** (11) |
 | (12, 1) | Mali-G620 |
 | (13, 0) | Mali-G925-Immortalis if ≥10 cores and ray intersection; Mali-G725 if ≥6 cores; otherwise Mali-G625 |
 | (13, 1) | Mali-G625 |

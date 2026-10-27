@@ -12,3 +12,4 @@
   - drivers/gpu/drm/panthor/panthor_mmu.c:590-605, 650-665, 785-795, 1858-1880 (fault IRQ bits, INA_BITS)
   - Documentation/devicetree/bindings/gpu/arm,mali-valhall-csf.yaml (RK3588 base address/size)
   - drivers/gpu/drm/panthor/panthor_mmu.c:1896 (AS_FAULTSTATUS bit 10)
+- Updated 2026-10-27: Sky1 pointer on the (12, 0) row; see 11-cix-sky1 provenance.

@@ -17,7 +17,9 @@ first-priority platform is the **Rockchip RK3588/RK3588S**:
 | Firmware | `arm/mali/arch10.8/mali_csffw.bin` (from linux-firmware) |
 
 Other SoCs with the same IP family include MediaTek MT8196 and NXP i.MX95
-(Mali-G310). The register interface is discoverable through `GPU_ID`
+(Mali-G310). The second target is the **CIX Sky1** with an Immortalis-G720
+(arch 12). It uses the same arch 10–13 code paths as the RK3588 but gets power,
+clocks and DVFS through SCMI firmware. See [11-cix-sky1](11-cix-sky1.md). The register interface is discoverable through `GPU_ID`
 (02-register-map).
 
 ## 0.2 How a CSF GPU works

@@ -127,6 +127,10 @@ with no limits. Critical at 115 °C.
 - **[POLICY]** Linux rejects (logs and skips) a custom ASN hash on arch major
   < 11.
 - No RK3588-specific quirks exist.
+- No CIX Sky1 entry exists at the baseline. A Sky1 node would bind through
+  the generic string with no per-SoC data. Sky1 power, performance-domain,
+  clock and reset identifiers, and the DVFS mismatch with 1.5, are in
+  [11-cix-sky1](11-cix-sky1.md).
 
 > OPEN QUESTION: The meaning of the MT8196 hash values `0xB`, `0xE`, `0x0` is
 > not documented in the source. Treat them as opaque constants.

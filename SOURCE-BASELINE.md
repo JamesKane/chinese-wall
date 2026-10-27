@@ -17,6 +17,20 @@
 | `Documentation/devicetree/bindings/gpu/arm,mali-valhall-csf.yaml` | GPL-2.0-only OR BSD-2-Clause |
 | `Documentation/gpu/panthor.rst` | GPL-2.0+ |
 
+## CIX Sky1 scope (section 11)
+
+| Path | License (SPDX) |
+|------|----------------|
+| `arch/arm64/boot/dts/cix/sky1.dtsi` | BSD-3-Clause |
+| `arch/arm64/boot/dts/cix/sky1-power.h` | GPL-2.0-only (numeric IDs only) |
+| `include/dt-bindings/clock/cix,sky1.h` | GPL-2.0-only OR BSD-2-Clause |
+| `include/dt-bindings/reset/cix,sky1-s5-system-control.h` | GPL-2.0-only OR BSD-2-Clause |
+| `drivers/reset/reset-sky1.c` | GPL-2.0-only (register facts only) |
+| `drivers/pmdomain/arm/scmi_perf_domain.c` | GPL-2.0 (behavior only) |
+
+No Sky1 GPU node, binding entry or Panthor match-table entry exists at this
+baseline.
+
 Linux dependencies that are GPL-only and therefore cannot be ported directly:
 `drivers/iommu/io-pgtable-arm.c` (GPL-2.0-only), which provides the page-table format, and
 `drivers/gpu/drm/drm_gem_shmem_helper.c` (GPL-2.0), which provides BO backing.

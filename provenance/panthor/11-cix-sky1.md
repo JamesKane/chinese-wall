@@ -1,0 +1,23 @@
+# Provenance: 11-cix-sky1
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read:
+  - arch/arm64/boot/dts/cix/sky1.dtsi (BSD-3-Clause): 1-155 (CPU perf-domain references), 228-256 (SCMI agents, protocols 0x11/0x13/0x14, SMC id), 283-287 (soc bus, dma-ranges), 551-575 (SCMI shmem and AP<->PM mailboxes), 765-769 (s5_syscon)
+  - arch/arm64/boot/dts/cix/sky1-power.h (GPL-2.0-only; numeric IDs only): all
+  - arch/arm64/boot/dts/cix/sky1-orion-o6.dts, sky1-xcp.dts: model strings; grep for gpu/mali/supply (no hits)
+  - arch/arm64/boot/dts/cix/ git log (no GPU node at baseline)
+  - include/dt-bindings/clock/cix,sky1.h (GPL-2.0-only OR BSD-2-Clause): 39-41, 239-240, 277
+  - include/dt-bindings/reset/cix,sky1-s5-system-control.h (GPL-2.0-only OR BSD-2-Clause): 10-25, 130-140
+  - drivers/reset/reset-sky1.c (GPL-2.0-only; register offsets, bits, polarity, delays only): 20-48, 51-62, 180, 266-320, 349-351
+  - drivers/pmdomain/arm/scmi_perf_domain.c (GPL-2.0): 25-76 (per-device OPP addition on attach; basis for 11.5.2)
+  - Documentation/devicetree/bindings/gpu/arm,mali-valhall-csf.yaml: 17-24 (compatible list), 60-80 (power-domains limits), 180-196 (MT8196 example)
+  - arch/arm64/boot/dts/freescale/imx95.dtsi:2298-2311 (comparison only: SCMI-clocked Valhall CSF node; nothing copied)
+  - drivers/gpu/drm/panthor/panthor_hw.c:100-140, 149-151 (product-name rule for (12,0)), 270-300 (arch dispatch)
+  - drivers/gpu/drm/panthor/panthor_hw.h:59-62 (PWR block from arch 14)
+  - drivers/gpu/drm/panthor/panthor_gpu.c:76 (ASN hash arch >= 11 gate)
+  - drivers/gpu/drm/panthor/panthor_fw.c:209-213, 326-338, 1004-1055 (interface-version gates), 1563 (arch12.8 firmware declaration)
+  - drivers/gpu/drm/panthor/panthor_device.c:30-62 (clocks, PD list attach), 232-234 (devfreq failure is fatal)
+  - drivers/gpu/drm/panthor/panthor_devfreq.c:140-250 (OPP table source selection)
+  - grep of drivers/gpu/drm/panthor, drivers/gpu/drm/panfrost and the binding directory for "cix"/"sky1" (no hits)
+- Not read: any vendor (CIX/Radxa) BSP kernel, ACPI tables, or SCMI firmware. "MC10" core count and the Sky1/CI-700 interconnect identity are public product information, not taken from the source.

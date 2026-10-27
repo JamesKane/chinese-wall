@@ -35,3 +35,4 @@
   - drivers/gpu/drm/panthor/panthor_sched.c:1850-1901 (global event processing, IDLE ack, CSG dispatch), 1385-1389 and 3695-3699 (protm suspend buffer)
   - drivers/iommu/io-pgtable-arm.c:127-136, 535-575, 1069-1076 (MAIR index values and PTE attribute selection, used to compute AS_MEMATTR table values in 5.3.3)
 - Derived values (computed, not copied): AS_MEMATTR full register values; ACK_IRQ_MASK hex values; progress timer value 2 560 000; RK3588 timer worked example (assumes 24 MHz system counter); struct field offsets and sizes computed from natural alignment of the header structs.
+- Updated 2026-10-27: Sky1 note on the arch12.8 row, from panthor_fw.c:1563; see 11-cix-sky1 provenance.

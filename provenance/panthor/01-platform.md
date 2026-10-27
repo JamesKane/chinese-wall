@@ -21,3 +21,4 @@
   - drivers/gpu/drm/panthor/panthor_sched.c:2612-2630, 3366-3375 (devfreq busy/idle marking)
   - include/uapi/drm/panthor_drm.h:262-280, 345-360 (coherency enum, selected_coherency)
 - Not read: Rockchip power-domain driver (drivers/pmdomain/rockchip), RK3588 CRU/SCMI clock drivers, Linux OPP/regulator-coupling core. Statements about their behavior are generic or marked OPEN QUESTION.
+- Updated 2026-10-27: Sky1 note in §1.3 from grep of drivers/gpu/drm/panthor and the binding for "cix"/"sky1" (no hits); details in 11-cix-sky1 provenance.

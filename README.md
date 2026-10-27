@@ -25,7 +25,7 @@ Writing rules are in [CLAUDE.md](CLAUDE.md). The upstream revision is in
 
 | Driver | Hardware | Status |
 |---|---|---|
-| [Panthor](specs/panthor/README.md) | Arm Mali CSF GPUs (Mali-G610 in Rockchip RK3588) | In progress |
+| [Panthor](specs/panthor/README.md) | Arm Mali CSF GPUs (Mali-G610 in Rockchip RK3588; Immortalis-G720 in CIX Sky1) | In progress |
 
 ## Reviewing a spec before release
 
