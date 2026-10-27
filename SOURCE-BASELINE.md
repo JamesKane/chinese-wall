@@ -191,3 +191,15 @@ Extracted 2026-10-27 for the X870E reference machine (Gigabyte X870E AORUS ELITE
 The base IT87 register model is also covered by permissively licensed BSD
 drivers, which the clean room may read directly. Mainline has no support for
 IT8696E (device ID `0x8696`).
+
+## Realtek RTL8125/8126 delta scope (specs/realtek-rtl8125-delta)
+
+Extracted 2026-10-27 for the X870E reference machine's onboard LAN.
+
+| Path | License (SPDX) |
+|------|----------------|
+| `drivers/net/ethernet/realtek/r8169_main.c`, `r8169_phy_config.c`, `r8169_firmware.{c,h}`, `r8169_leds.c`, `r8169.h` | GPL-2.0-only (facts and behavior only) |
+| `../openbsd-src/sys/dev/pci/if_rge.c` (rev 1.43) | ISC; coverage comparison only |
+
+RSS and multi-vector MSI-X are enabled upstream for RTL8127A only. Realtek's
+out-of-tree r8125/r8126 drivers were not read.
