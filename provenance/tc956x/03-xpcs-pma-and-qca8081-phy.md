@@ -1,0 +1,22 @@
+# Provenance: tc956x/03-xpcs-pma-and-qca8081-phy
+
+- **Baselines**:
+  - `mainline d135ab453a7400a34930bdda1ef4bdc8acfac80e`
+  - `radxa/kernel@c00e1e17e65104c8143a8f3d559ef723ae5824d3` (`linux-7.0.11`)
+  - `TC956X/TC9564_Host_Driver@3eca71ce0c5708c92e20f14b8e858cd4483d58f3`
+- **Extracted**: `2026-10-27`
+- **Methodology**: Clean-room functional specification extraction. Only hardware facts (XPCS indirect paging, PMA offsets/values, dynamic speed reconfiguration sequence, and QCA8081 Clause 22/45 registers including the `0x1d` SerDes FIFO reset) were extracted; no source code or comments were copied.
+- **Sources Read**:
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/dumps/freebsd/tc956x-p0.txt` (lines 20–36): Live dump of `XPCS` (`SR_XS_PCS_CTRL1/STS1/DEV_ID1/DEV_ID2/CTRL2`, `VR_XS_PCS_DIG_CTRL1`, `SR_VEND1_ID1/2`, `SR_MII_CTRL=0x0140`, `SR_MII_STS=0x01ad`, `VR_MII_DIG_CTRL1=0x0000`, `VR_MII_AN_CTRL=0x0004`) and `QCA8081 PHY` (`BMCR=0x1040`, `BMSR=0x796d`, `ID1=0x004d`, `ID2=0xd101`, `ADV=0x0de1`, `LPA=0xc5e1`, `CTRL1000=0x0200`, `STAT1000=0x3800`, `SPEC_STATUS=0xad00`, `C45 AN 0x0020=0x00a1`, `C45 AN 0x0021=0x0000`).
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/ethernet-tc956x.md` (lines 60–130): Cold-port (`tc1`) bring-up root-cause analysis (`NEMAC1CTL.SP_SEL` reset value `8`, 5-step PMA init, XPCS `EN_2_5G_MODE` / `SR_MII_CTRL`, and QCA8081 SerDes responder `0x1d` MMD 1 register `0x9072` bit 11 FIFO reset).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwmac-tc956x.c`:
+    - Lines 43–115: PMA base offset (`XGMAC + 0x4000`), XPCS base offset (`XGMAC + 0x3A00`), PMA register offsets (`PMA_CML_GL_PM_CFG0 = 0x01b8`, `PMA_HWT_REFCK_R_EN = 0x1080`, `PMA_HWT_REFCK_TERM_EN = 0x1090`, `PMA_COMM_CFG_0_1 = 0x1888`, `PMA_REG_COUNT = 5`), and `PMA_COMM_CFG_0_1` bitfields (`0x0001ef04`).
+    - Lines 338–387: 5-step PMA reset, configuration, and `NEMACxCTL.INIT_DONE` (`bit 21`) polling sequence.
+    - Lines 497–570: Dynamic link speed reconfiguration callback (`tc956x_dwmac_fix_speed`).
+  - `radxa-kernel/drivers/net/pcs/pcs-xpcs-regmap.c` (lines 18–75): Indirect 21-bit XPCS register access via page select word `0xff` (`+0x3fc`, upper 13 bits `reg >> 8`) and 32-bit register stride (`(reg & 0xff) * 4`).
+  - `radxa-kernel/drivers/net/pcs/pcs-xpcs.c` (lines 600–1150) and `radxa-kernel/drivers/net/pcs/pcs-xpcs.h` (lines 1–128): DesignWare XPCS Clause 45 register offsets (`MMD 0x03`, `MMD 0x1e`, `MMD 0x1f`) and 2500BASE-X vs SGMII configuration sequences (`VR_XS_PCS_DIG_CTRL1`, `VR_MII_AN_CTRL`, `VR_MII_DIG_CTRL1`, `SR_MII_CTRL`).
+  - `TC9564_Host_Driver/tc956x_pma.c` (lines 1–78), `TC9564_Host_Driver/tc956x_pma.h` (lines 1–65), `TC9564_Host_Driver/tc956x_xpcs.c` (lines 1–159), and `TC9564_Host_Driver/tc956x_xpcs.h` (lines 1–88): Toshiba vendor reference PMA and XPCS initialization sequences.
+  - `radxa-kernel/drivers/net/phy/qcom/qca808x.c` (lines 1–680) and `radxa-kernel/drivers/net/phy/qcom/qcom.h` (lines 1–272):
+    - Lines 15–145 (`qca808x.c`): QCA8081 Clause 45 MMD1/MMD3/MMD7 threshold registers, `QCA8081_PHY_SERDES_MMD1_FIFO_CTRL` (`0x9072`), and `QCA8081_PHY_FIFO_RSTN` (`BIT(11)` = `0x0800`).
+    - Lines 150–175 (`qca808x.c`): `qca808x_phy_fifo_rstn_reset` at companion SerDes MDIO address `phydev->mdio.addr + 1` (`0x1d`).
+    - Lines 250–495 (`qca808x.c`): `qca808x_config_init`, `qca808x_config_aneg` (`MDIO_AN_10GBT_CTRL_ADV2_5G`), `qca808x_read_status` (`QCA808X_STATUS_SPEED_MASK` bits `[9:7]`), and `qca808x_link_change_notify`.

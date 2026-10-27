@@ -1,0 +1,22 @@
+# Provenance: tc956x/01-pcie-bar-sfr-tamap-msigen
+
+- **Baselines**:
+  - `mainline d135ab453a7400a34930bdda1ef4bdc8acfac80e`
+  - `radxa/kernel@c00e1e17e65104c8143a8f3d559ef723ae5824d3` (`linux-7.0.11`)
+  - `TC956X/TC9564_Host_Driver@3eca71ce0c5708c92e20f14b8e858cd4483d58f3`
+- **Extracted**: `2026-10-27`
+- **Methodology**: Clean-room functional specification extraction. Only hardware facts (PCI IDs, BAR sizes, register offsets, bit positions, DMA translation formulas, initialization sequences) were extracted; no source code or comments were copied.
+- **Sources Read**:
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/dumps/linux/lspci.txt` (lines 487–799): Exact PCIe hierarchy on segment `0004` (`0004:00:00.0` SC8280XP Root Port `17cb:0110`, `0004:01:00.0` and `0004:02:01.0..03.0` Toshiba TC9563 Switch `1179:0623`, `0004:03:00.0` and `0004:03:00.1` Toshiba TC956x Ethernet Endpoints `1179:0220`, subdevice `1179:0001`, BAR0/BAR2/BAR4 physical addresses and sizes, MSI and MSI-X capabilities).
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/dumps/freebsd/tc956x-p0.txt` (lines 1–36): Empirical register dump on Radxa Dragon Q8B (`NCID=0x00000001`, `NMODESTS=0x00000201`, `NFUNCEN0=0x00000120`, `NPCIEBOOT=0x00000001`, `NCLKCTRL0=0x80044280`, `NRSTCTRL0=0x00010013`, `NCLKCTRL1=0x8000c080`, `NRSTCTRL1=0x00000000`, `NBUSCTRL=0x00010000`, `NEMAC0CTL=0x00200115`, `NEMAC1CTL=0x00000008`, `NEMACSTS=0x00001800`, `NEMACIOCTL=0xf300f300`, `GPIO0..1` registers, `TAMAP0..3` registers, and `MSIGEN` registers).
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/ethernet-tc956x.md` (lines 1–130): Cross-function BAR4 ownership, unclocked MMIO SError behavior, `NEMAC1CTL` default `SP_SEL=8` trap, and single-MSI operation notes.
+  - `radxa-kernel/drivers/misc/tc956x_pci.c`:
+    - Lines 30–141: BAR4 SFR register offsets (`NMODESTS`, `NCLKCTRL0`, `NRSTCTRL0`, `NCLKCTRL1`, `NRSTCTRL1`, `GPIOI0/1`, `GPIOE0/1`, `GPIOO0/1`, `INTMCUMASK0/1`, `MSI_OUT_EN`, `MSI_SEND_TRIG`, `MSI_MASK_SET`, `MSI_MASK_CLR`, `MSI_INT_STS`, `MSI_VECT_SET0`, `MSI_EVENT`), clock/reset bitmasks, and MSIGEN source bit positions (`0..24`).
+    - Lines 142–237: GPIO input/output/direction register access (`GPIOE0/1` `0` = output, `1` = input).
+    - Lines 239–363: MSIGEN interrupt handler (`MSI_INT_STS`, `MSI_MASK_SET`, `MSI_MASK_CLR`, `MSI_OUT_EN`) and vector routing (`MSI_VECT_SET0..7`).
+    - Lines 433–638: Chip clock/reset initialization sequence and child platform device creation for Port 0 (`0x40000`) and Port 1 (`0x48000`).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwmac-tc956x.c`:
+    - Lines 23–78: `NEMAC0CTL`/`NEMAC1CTL` offsets (`0x1070`, `0x1074`), `SP_SEL` speed values (`4` = 2500M, `5` = 1000M, `6` = 100M, `7` = 10M), `PHY_INF_SEL` (`bits 5:4 = 1`), `LPIHWCLKEN` (`bit 8`), `INIT_DONE` (`bit 21`), and BAR0 TAMAP offsets (`0x0800 + tid * 0x20`) and bitfields (`SRC_ADDR_LO=0x47`, `SRC_ADDR_HI=0x10`, 36-bit DMA width).
+    - Lines 389–435: TAMAP entry 0 configuration and entries 1..3 clearing.
+    - Lines 675–689: Host-to-device and device-to-host DMA address translation (`+0x10_0000_0000`).
+  - `TC9564_Host_Driver/tc956xmac_inc.h` (lines 70–248) and `TC9564_Host_Driver/tc956xmac_config.h` (lines 1–408): Complete `NCLKCTRL0/1`, `NRSTCTRL0/1`, `NEMAC0/1CTL` (`SP_SEL` values `0..13`), `RSCMNG_ID_REG` (`0x2000`), and BAR0 TAMAP macro definitions.

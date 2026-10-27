@@ -33,6 +33,12 @@ Writing rules are in [CLAUDE.md](CLAUDE.md). The upstream revision is in
 | [Sky1 peripherals](specs/sky1-peripherals/README.md) | CIX Sky1 Cadence GPIO, I2C, SPI/QSPI, RTS5453H USB-PD, pinctrl | Draft |
 | [Linlon VPU](specs/linlon-vpu/README.md) | Arm China Linlon / Mali-V video codec (CIXH3010): MMU, firmware interface, V4L2 ABI | Draft |
 | [Zhouyi NPU](specs/zhouyi-npu/README.md) | Arm China Zhouyi X2 v3 NPU (CIXH4000): registers, job model, /dev/aipu ABI | Draft |
+| [Qualcomm SC8280XP SoC](specs/qcom-sc8280xp/README.md) | Qualcomm SC8280XP (Radxa Dragon Q8B): GENI UART/I²C, TLMM GPIO, SDHCI-MSM v5, DWC3, EPSS cpufreq, TSENS v2, SCM, Command DB, RPMh, ADSP/CDSP PAS, SMEM v12, IPCC, GLINK/QRTR, PMIC GLINK USB-C, AudioReach/SoundWire/WCD9385 | Draft |
+| [Toshiba TC956x 2.5 GbE](specs/tc956x/README.md) | Toshiba TC956x PCIe 2.5 GbE controller: BAR0/BAR4 SFR, TAMAP DMA offset, Synopsys XGMAC2 3.01a, XPCS, SerDes PMA, MSIGEN, QCA8081 PHY | Draft |
+| [Qualcomm Adreno 690 GPU](specs/adreno-a690/README.md) | Qualcomm Adreno 690 GPU (QCOM0636): GPUCC CX power-up, GMU HFI/devfreq, A690 CP/ringbuffer/zap-shader/split-SMMU, `/dev/dri/renderD128` msm ioctl ABI | Draft |
+| [Qualcomm MDSS DPU & DP](specs/qcom-mdss-dpu/README.md) | Qualcomm SC8280XP MDSS DPU1 (v8.0) pipeline (SSPP/LM/CTL/INTF), DisplayPort (DP0/DP1/DP2) AUX/link-training/MSA/TU math, dispcc, QMP Combo PHY DP Alt-Mode | Draft |
+| [Qualcomm Iris VPU 2.0](specs/qcom-iris-vpu/README.md) | Qualcomm Iris VPU 2.0 video codec: videocc (Lucid 5LPE PLL, MVS0/MVS0C GDSCs), SCM `mem_protect_video_var`, Gen2 HFI protocol, V4L2 m2m ABI | Draft |
+| [Qualcomm FastRPC (CDSP/NPU)](specs/qcom-fastrpc/README.md) | Qualcomm FastRPC kernel transport (`/dev/fastrpc-cdsp` ioctl ABI, GLINK RPC marshaling, coherent SMMU compute context banks for Hexagon v68 HTP NPU) | Draft |
 
 ## Reviewing a spec before release
 

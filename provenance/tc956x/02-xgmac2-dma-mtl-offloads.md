@@ -1,0 +1,26 @@
+# Provenance: tc956x/02-xgmac2-dma-mtl-offloads
+
+- **Baselines**:
+  - `mainline d135ab453a7400a34930bdda1ef4bdc8acfac80e`
+  - `radxa/kernel@c00e1e17e65104c8143a8f3d559ef723ae5824d3` (`linux-7.0.11`)
+  - `TC956X/TC9564_Host_Driver@3eca71ce0c5708c92e20f14b8e858cd4483d58f3`
+- **Extracted**: `2026-10-27`
+- **Methodology**: Clean-room functional specification extraction. Only hardware facts (register offsets, bitfields, descriptor layouts, CRC32 hash formula, hardware errata, and initialization order) were extracted; no source code or comments were copied.
+- **Sources Read**:
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/dumps/freebsd/tc956x-p0.txt` (lines 16–36): Live register dump of `XGMAC0` on Radxa Dragon Q8B (`VERSION=0x00107630`, `HW_FEATURE0=0xca7d79f3`, `HW_FEATURE1=0x01857a69`, `HW_FEATURE2=0x131c71c7`, `HW_FEATURE3=0x3dac099b`, `TX_CONFIG=0x60010001`, `RX_CONFIG=0x00000207`, `PACKET_FILTER=0x00000004`, `RXQ_CTRL0=0x00000002`, `Q0_TX_FLOW_CTRL=0xffff0002`, `RX_FLOW_CTRL=0x00000001`, `MDIO_ADDR=0x001c0001`, `MDIO_DATA=0x002b7949`, `MDIO_C22P=0x10000000`, `ADDR0_HIGH=0x8000024e`, `ADDR0_LOW=0x004e1288`, `MTL_TXQ0_OP=0x007f000a`, `MTL_RXQ0_OP=0x007f00a0`, `MTL_RXQ0_FC=0x002c001c`, `DMA_MODE=0x00001000`, `DMA_SYSBUS_MODE=0x1f1f087f`, and `DMA_CH0` registers).
+  - `/home/jkane/Projects/OS/AbyssBSD/docs/boards/radxa-dragon-q8b/ethernet-tc956x.md` (lines 20–130): Factory MAC address storage in I²C12 EEPROM (`0x50` offsets `0x9E` and `0xA4`) and UEFI pre-programmed `MAC_ADDR0_HIGH/LOW` preservation rule across `NRSTCTRL`/`DMA_MODE.SWR`.
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwxgmac2.h`:
+    - Lines 1–303: XGMAC2 Core (`0x0000–0x0d80`), MTL (`0x1000–0x1174`), and DMA (`0x3000–0x3160`) register offsets and bit definitions (`XGMAC_CONFIG_SS_*` speed encodings `0..7` at bits `[31:29]`, `XGMAC_RX_CONFIG`, `XGMAC_PACKET_FILTER`, `XGMAC_VLAN_TAG`, `XGMAC_VLAN_INCL`, `XGMAC_MDIO_ADDR`, `XGMAC_MDIO_DATA`, `XGMAC_MDIO_C22P`, `XGMAC_HW_FEATURE0..3`, `XGMAC_MTL_TXQ_OPMODE`, `XGMAC_MTL_RXQ_OPMODE`, `XGMAC_DMA_MODE`, `XGMAC_DMA_SYSBUS_MODE`, and per-channel DMA offsets).
+    - Lines 305–479: 16-byte TX/RX normal and context descriptor bitfields (`TDES0..3`, `RDES0..3`).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_core.c`:
+    - Lines 30–145: Core init, TX/RX queue enable (`XGMAC_RXQ_CTRL0`), and speed selection (`XGMAC_CONFIG_SS_2500_GMII = 2 << 29` for 2500BASE-X vs `XGMAC_CONFIG_SS_1000_GMII = 3 << 29`).
+    - Lines 195–315: RX/TX flow control (`XGMAC_Qx_TX_FLOW_CTRL`, `XGMAC_RX_FLOW_CTRL`, `XGMAC_MTL_RXQ_FLOW_CONTROL` `RFA`/`RFD`).
+    - Lines 370–555: Station MAC address (`XGMAC_ADDRx_HIGH`/`LOW`), multicast CRC32 bit-reversed hash filter (`crc32_le`, `bitrev32(~crc) >> 26`), and VLAN tag stripping/insertion (`XGMAC_VLAN_TAG`, `XGMAC_VLAN_INCL`).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_dma.c`:
+    - Lines 18–145: `DMA_MODE` (`SWR`, `INTM = 1`), `DMA_SYSBUS_MODE` (`EAME`, `RD_OSR_LMT`, `WR_OSR_LMT`, `BLEN*`, `UNDEF`), and per-channel TX/RX DMA control (`PBLx8`, `TxPBL`, `RxPBL`, `RBSZ`, `TSE`, `OSP`).
+    - Lines 146–375: MTL TX/RX queue FIFO sizing (`TQS`, `RQS` in 256B units minus 1), DMA channel interrupt status handling (`DMA_CH_STATUS` write-1-to-clear), and RX watchdog (`DMA_CH_Rx_WATCHDOG`).
+    - Lines 500–605: Hardware feature decoding (`HW_FEATURE0..3`).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwxgmac2_descs.c`:
+    - Lines 15–388: TX/RX descriptor formatting, context descriptors (`MSS`, `VLTV`, `TCMSSV`), TX `CIC` checksum control (`0..3`), RX `L34T` and `ET` checksum/error decoding, and stripped VLAN extraction (`RDES0.OVT`).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/stmmac_mdio.c` (lines 37–222): XGMAC2 Clause 22 and Clause 45 MDIO formatting (`XGMAC_MDIO_C22P` 32-bit port mask on XGMAC >= 2.20, `XGMAC_MDIO_ADDR`, `XGMAC_MDIO_DATA` `SBUSY`, `SADDR`, `CMD`).
+  - `radxa-kernel/drivers/net/ethernet/stmicro/stmmac/dwmac-tc956x.c` (lines 720–785) and `TC9564_Host_Driver/dwxgmac2_dma.c` (lines 50–450): Synopsys XGMAC 3.01a errata (`DSPW = 0` in `DMA_MODE` and `OWRQ = 3` in `DMA_CH_RxDESC_RING_LEN[25:24]`) and 46 KB physical TX/RX FIFO SRAM sizing.

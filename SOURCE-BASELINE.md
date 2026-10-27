@@ -97,3 +97,33 @@ Mainline at the baseline: `drivers/clk/cix/clk-sky1-audss.c`, `drivers/reset/res
 `Sky1-Linux/linux-sky1@57e018a` patches 0010 (CIX/Arm China Linlon VPU driver, `drivers/media/platform/cix/`), 0127; 0009 (Arm China Zhouyi NPU driver, `drivers/misc/armchina-npu/`), 0101, 0103, 0132, 0139. Vendor DT `Sky1-Linux/linux@665339c` (BSD-3-Clause). `acpi-to-dts-tools@9ddd22c` (MIT). Mainline has neither driver at the baseline.
 
 Licence notes: the VPU driver files carry SPDX `GPL-2.0-only` but their headers also contain an Arm China "confidential and proprietary" notice and an "or later" paragraph, which contradict each other. The NPU driver is GPL-2.0; its uapi header `armchina_aipu.h` is `GPL-2.0 WITH Linux-syscall-note` (not MIT).
+
+## Radxa Dragon Q8B (Qualcomm SC8280XP & Toshiba TC956x) sources
+
+Extracted in four phases on 2026-10-27 for the Radxa Dragon Q8B (Qualcomm SC8280XP / Snapdragon 8cx Gen 3, ACPI WoA PEP `QCOM0617`, `soc_id = 449`).
+
+| Source | Revision | Paths read | License (SPDX) |
+|---|---|---|---|
+| `../linux` (mainline) | `d135ab453a7400a34930bdda1ef4bdc8acfac80e` (`v7.3-16755-gd135ab453a74`) | `drivers/soc/qcom/*`, `drivers/tty/serial/qcom_geni_serial.c`, `drivers/i2c/busses/i2c-qcom-geni.c`, `drivers/pinctrl/qcom/pinctrl-sc8280xp.c`, `drivers/pinctrl/qcom/pinctrl-msm.c`, `drivers/mmc/host/sdhci-msm.c`, `drivers/usb/dwc3/*`, `drivers/cpufreq/qcom-cpufreq-hw.c`, `drivers/thermal/qcom/tsens*`, `drivers/firmware/qcom/qcom_scm*`, `drivers/pmdomain/qcom/rpmhpd.c`, `drivers/interconnect/qcom/*`, `drivers/remoteproc/qcom_q6v5_pas.c`, `drivers/hwspinlock/qcom_hwspinlock.c`, `drivers/mailbox/qcom-ipcc.c`, `drivers/rpmsg/qcom_glink*`, `net/qrtr/*`, `drivers/phy/qualcomm/*`, `sound/soc/qcom/qdsp6/*`, `sound/soc/codecs/{lpass-*,wcd938x*}`, `drivers/soundwire/qcom.c`, `drivers/clk/qcom/{gpucc-sc8280xp.c,dispcc-sc8280xp.c,videocc-sm8350.c,clk-alpha-pll.c,clk-rcg2.c,gdsc.c}`, `drivers/gpu/drm/msm/*`, `drivers/misc/fastrpc.c`, `drivers/net/ethernet/stmicro/stmmac/dwxgmac2*`, `drivers/net/pcs/pcs-xpcs*`, `drivers/net/phy/qcom/qca808x.c`, and related headers/bindings | Drivers: GPL-2.0; bindings: GPL-2.0-only OR BSD-2-Clause; `drivers/gpu/drm/msm/registers/*.xml` and `include/uapi/drm/msm_drm.h`: MIT; `include/uapi/misc/fastrpc.h`: GPL-2.0 WITH Linux-syscall-note |
+| `radxa/kernel` (`https://github.com/radxa/kernel`, branch `linux-7.0.11`) | `c00e1e17e65104c8143a8f3d559ef723ae5824d3` | `drivers/media/platform/qcom/iris/*`, `drivers/misc/tc956x_pci.c`, `drivers/net/ethernet/stmicro/stmmac/dwmac-tc956x.c`, `drivers/net/pcs/pcs-xpcs*`, `drivers/net/phy/qcom/qca808x.c`, `arch/arm64/boot/dts/qcom/sc8280xp*.dts*` | Drivers: GPL-2.0-only; SC8280XP devicetrees: BSD-3-Clause |
+| `TC956X/TC9564_Host_Driver` (`https://github.com/TC956X/TC9564_Host_Driver`, branch `master`) | `3eca71ce0c5708c92e20f14b8e858cd4483d58f3` | `tc956x_pci.c`, `tc956x_pma.*`, `tc956x_xpcs.*`, `tc956xmac_*`, `dwxgmac2*`, `common.h`, `descs.h`, `hwif.*`, `mmc*` | GPL-2.0 |
+| Radxa Dragon Q8B board dumps (`../AbyssBSD/docs/boards/radxa-dragon-q8b/`) | UEFI `BOOT.MXF.1.1` (2026-08-18) / Ubuntu `7.0.11-7-qcom` | `dumps/acpi/*.dsl`, `dumps/dt/live.dts`, `dumps/freebsd/*`, `dumps/linux/*`, empirical board notes | Hardware register/table dumps and BSD-2-Clause notes |
+
+### Phase Breakdown and Permissive Assets
+
+- **Phase 1 — Core SoC, Console, Storage, Thermal, Cpufreq & Fan Quiet-Down (`specs/qcom-sc8280xp/01..03`)**:
+  - `01-geni-uart-i2c-tlmm-sdhci.md`: QUPv3 GENI UART (`0x884000`) & I²C (`0xa90000`), TLMM ACPI GPIO (`0x0F100000` + secure-pin mask), SDHCI-MSM v5 `PWRCTL` handshake (`0x8804000`), and DWC3 `GRXTHRCFG` quirk.
+  - `02-epss-and-tsens.md`: EPSS cpufreq LUT/perf registers (`0x18591000`/`0x18592000`) and TSENS v2 SROT/TM registers (`0xc222000`–`0xc265000`).
+  - `03-scm-cmddb-rpmh-adsp.md`: TrustZone SCM SMC64 protocol + PAS loader (`qcom_scm`, `qcom_adsp`), Command DB (`0x80860000`), and RPMh RSC DRV2 ARC/BCM voter (`qcom_rpmh`).
+- **Phase 2 — 2.5 GbE Networking (`specs/tc956x/`)**:
+  - Toshiba TC956x PCIe BAR0/BAR4 map, TAMAP `+0x10_0000_0000` DMA offset, XGMAC2 3.01a rings/offloads/MTL flow control, XPCS indirect window, PMA 5-step speed re-init, MSIGEN, and QCA8081 PHY C45 MMD1 `0x9072` SerDes reset.
+- **Phase 3 — GLINK Fabric, USB-C Orientation & Audio (`specs/qcom-sc8280xp/04..05`)**:
+  - `04-smem-ipcc-glink-usbc.md`: TCSR mutex (`0x1f40000`), SMEM v12 (`0x80900000`), IPCC (`0x408000`), GLINK native protocol + QRTR (`IPCRTR`), and `pmic_glink` USB-C orientation + QMP Combo PHY lane switching (`0x88eb000`/`0x8903000`).
+  - `05-audioreach-soundwire-wcd9385.md`: GPR packet routing, APM/PRM AudioReach graph setup, Apps SMMU stream `0xc01` high-nibble IOVA tag (`iova | (1ULL << 32)`), LPASS RX/VA macros, SoundWire controller, and WCD9385 codec/jack-detect sequence.
+- **Phase 4 — GPU, Display, VPU & NPU Accelerators (`specs/adreno-a690/`, `specs/qcom-mdss-dpu/`, `specs/qcom-iris-vpu/`, `specs/qcom-fastrpc/`)**:
+  - `specs/adreno-a690/`: `qcom_gpucc` CX power-up, GMU HFI/devfreq, A690 CP/ringbuffer/zap-shader/split-SMMU, and DRM `msm` ioctl ABI. Note: `drivers/gpu/drm/msm/registers/*.xml` and `include/uapi/drm/msm_drm.h` are **MIT-licensed** and may be used directly in the clean room.
+  - `specs/qcom-mdss-dpu/`: MDSS DPU1 SSPP/LM/CTL/INTF pipeline, DP0/DP1/DP2 AUX/link-training/MSA/TU calculations, `dispcc-sc8280xp`, and QMP Combo PHY DP Alt-Mode tables.
+  - `specs/qcom-iris-vpu/`: `qcom_videocc` (Lucid 5LPE PLL + MVS0/MVS0C GDSCs), SCM `mem_protect_video_var`, Iris VPU 2.0 Gen2 HFI protocol, and V4L2 `m2m` decoder/encoder state machine.
+  - `specs/qcom-fastrpc/`: `/dev/fastrpc-cdsp` ioctl ABI, GLINK RPC buffer marshaling, and coherent SMMU compute context bank management. Note: Qualcomm's userland `quic/fastrpc` (`libcdsprpc`) is **BSD-3-Clause** and may be read directly in the clean room.
+
+Exact source files and line ranges for each specification are recorded in `provenance/qcom-sc8280xp/`, `provenance/tc956x/`, `provenance/adreno-a690/`, `provenance/qcom-mdss-dpu/`, `provenance/qcom-iris-vpu/`, and `provenance/qcom-fastrpc/`.
