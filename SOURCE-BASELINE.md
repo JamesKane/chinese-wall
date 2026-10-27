@@ -178,3 +178,16 @@ The vendor devicetrees use different node labels and some different
 compatibles from mainline (for example `k3_com260.dtsi` versus mainline
 `k3-com260.dtsi`). A clean-room driver binds to the **mainline** compatibles.
 Vendor-only compatibles are recorded only when mainline has none.
+
+## ITE IT87 Super I/O hwmon scope (specs/ite-it87-superio)
+
+Extracted 2026-10-27 for the X870E reference machine (Gigabyte X870E AORUS ELITE WIFI7).
+
+| Path | License (SPDX) |
+|------|----------------|
+| `drivers/hwmon/it87.c` | GPL-2.0-or-later (facts and behavior only) |
+| `drivers/platform/x86/gigabyte-wmi.c` | GPL-2.0-or-later (facts and behavior only) |
+
+The base IT87 register model is also covered by permissively licensed BSD
+drivers, which the clean room may read directly. Mainline has no support for
+IT8696E (device ID `0x8696`).

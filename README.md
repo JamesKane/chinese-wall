@@ -40,6 +40,7 @@ Writing rules are in [CLAUDE.md](CLAUDE.md). The upstream revision is in
 | [Qualcomm Iris VPU 2.0](specs/qcom-iris-vpu/README.md) | Qualcomm Iris VPU 2.0 video codec: videocc (Lucid 5LPE PLL, MVS0/MVS0C GDSCs), SCM `mem_protect_video_var`, Gen2 HFI protocol, V4L2 m2m ABI | Draft |
 | [Qualcomm FastRPC (CDSP/NPU)](specs/qcom-fastrpc/README.md) | Qualcomm FastRPC kernel transport (`/dev/fastrpc-cdsp` ioctl ABI, GLINK RPC marshaling, coherent SMMU compute context banks for Hexagon v68 HTP NPU) | Draft |
 | [SpacemiT K3](specs/spacemit-k3/README.md) | SpacemiT K3 RISC-V SoC on the K3-CoM260 module (BPI-SM10): PLLs and clock/reset controllers; stubs for pinctrl/GPIO, SDHCI, I2C, P1 PMIC, Ethernet glue, USB PHYs/DWC3, SPI/QSPI, PWM, PDMA, I2S, and (from the SpacemiT vendor kernel) PCIe, power domains, thermal, display, UFS | In progress |
+| [ITE IT87 Super I/O hwmon](specs/ite-it87-superio/README.md) | ITE IT8689E / IT87952E Environment Controller on the X870E reference board: Super I/O access and detection, voltage/temperature/16-bit fan sensors, six-channel PWM and automatic fan control, Gigabyte WMI temperatures (IT8696E unconfirmed) | Draft |
 
 ## Reviewing a spec before release
 
