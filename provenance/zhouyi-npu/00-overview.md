@@ -1,0 +1,27 @@
+# Provenance: zhouyi-npu/00-overview
+
+- Baseline: mainline d135ab453a7400a34930bdda1ef4bdc8acfac80e (checked only: no Zhouyi/aipu driver, no Sky1 NPU node) plus the Sky1-Linux revisions below
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Only facts (offsets, bits, values, layouts, sequences, error codes) taken; no code or comments copied. Struct offsets were computed by compiling the vendor uapi header in a scratch tool (not distributed).
+- Driver tree: Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patch 0009 extracted into an empty git repo (only drivers/misc/armchina-npu/*), with patches 0103, 0132, 0139 applied on top. Paths below are relative to drivers/misc/armchina-npu/ in that tree; line numbers refer to the patched files.
+- Licenses (SPDX): all driver .c/.h files GPL-2.0 (Copyright Arm Technology (China) 2023-2024; sky1/sky1.c and include/cix_sky1_soc.h Copyright Cix Technology 2024); Kconfig GPL-2.0-only; include/armchina_aipu.h GPL-2.0 WITH Linux-syscall-note (NOT MIT). Vendor DT Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 sky1.dtsi / sky1-orion-o6.dts: BSD-3-Clause. Mainline include/dt-bindings/clock/cix,sky1.h: GPL-2.0-only OR BSD-2-Clause; arch/arm64/boot/dts/cix/sky1-power.h: GPL-2.0-only (numeric IDs only). Sky1-Linux/acpi-to-dts-tools@9ddd22c9926d329a2037a800e99545d09f493b51: MIT.
+- Sources read:
+  - include/armchina_aipu.h 57-65 (partition/cluster terminology), 67-119 (cluster limits 8)
+  - zhouyi/v3.h 7-66 (cluster config fields, 8 clusters), 133-142 (build info), 409-421 (debug/GM, max offset 0x322C)
+  - zhouyi/v3_priv.c 13-194 (cluster-partition property parsing, default 1 cluster, presence check)
+  - zhouyi/zhouyi.c 39-67 (version detection from MMIO resource 0)
+  - aipu_priv.c 43-124 (version dispatch), 13-20 (misc device)
+  - aipu_common.c 250-315 (MMIO resource 0, IRQ 0)
+  - aipu_irq.c 43-89 (shared IRQ request)
+  - aipu_mm.c 1170-1296 (gm-policy property, IOMMU detection, memory-region path), 993-1109 (reserved region node names, asid, host-aipu-offset)
+  - sky1/sky1.c 1-568 entire (core_mask handling 347-360, CRE child walk 369-391, power domains 295-335, runtime PM 474-523, devfreq 68-261 incl. 0103 ACPI perf lookup 128-146, polling 50 ms 189, userspace governor 194)
+  - Makefile 1-18 (CONFIG_SKY1, devfreq enabled with PM_DEVFREQ), Kconfig 1-69
+  - linux-sky1 patches/0103 commit message (72 MHz-1 GHz, npu_dfs_8, EEXIST issue) and diff
+  - linux-sky1 patches/0101 commit message and 35-140 (fwnode genpd provider; SCMI DVFS protocol child node with reg = protocol id, may be _STA=0; power-domains/power-domain-names _DSD lookup) and 300-470 (attach by id/name under ACPI)
+  - linux-sky1 patches/0003 3901-3904, 4024 (NPU reset bits), 5368-5370 (NPU clocks), 6266-6283 (PD and perf IDs), 6392-6395, 6515 (reset indices), 6562 (NPU temp sensor 7)
+  - mainline include/dt-bindings/clock/cix,sky1.h 73-75; arch/arm64/boot/dts/cix/sky1-power.h 26-41
+  - vendor DT sky1.dtsi 567-571 (aipu_res_0), 649-660 (smmu_mmhub, dma-coherent), 698-714 (NPU TBU PMCGs), 3000-3013 (npu node), 3356-3359 (npu_harvest_0 cell), 3375-3376 (CSI RCSU at 0x14270000), 4053-4070 (tz-npu)
+  - vendor DT sky1-orion-o6.dts 2149-2155, 2165-2168, 2492-2494 (aipu_res_0/npu/smmu_mmhub enabled)
+  - acpi-to-dts-tools examples/generated-o6-from-acpi.dts 693-698 (CIXH4000 _CRS: 0x14260000/0x10000, SPI 327 level-high)
+  - linux-sky1 config/config.sky1 (ARM64_4K_PAGES, PM_DEVFREQ, DEVFREQ_GOV_USERSPACE, ARM_SMMU_V3)
+  - repo specs sky1-soc/01 and 02 (referenced, not re-derived)

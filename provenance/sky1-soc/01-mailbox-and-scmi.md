@@ -15,3 +15,4 @@
   - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0076 (CLKT format, CIXHA010, scmi clock registration), 0077 (CLKT dependency on CIXHA010), 0106 (CLKT element 2 consumer), 0080 (SCMI PD disabled under ACPI; GPT clock names), 0091/0092 commit messages (CIXHA010 dependency chain)
   - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0096 lines 290-385 (raw SMC SCMI POWER_STATE_SET sequence, 0xc2000001, 0x84380000), 0015/0023 titles (GPU DVFS rate limiting)
   - Sky1-Linux/acpi-to-dts-tools@9ddd22c9926d329a2037a800e99545d09f493b51 docs/ACPI-to-DTS-Mapping.md (MIT): CLKT/_DSD/interrupt-numbering sections, HID table (noted as unreliable)
+  - patches/0101 (ACPI SCMI protocol child nodes with reg = protocol id, _STA=0 stubs, fwnode power-domain provider) [correction 2026-10-27, prompted by zhouyi-npu extraction]

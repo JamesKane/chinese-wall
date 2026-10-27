@@ -172,10 +172,17 @@ overflow (bit 6) on tx, or underflow + rising watermark (bits 7, 4) on rx.
 
 Entry 0 is tx and entry 1 is rx in both lists.
 
-- **[HW]** Under ACPI there are no per-protocol child nodes. A client
-  discovers protocols with the SCMI Base protocol (`PROTOCOL_ATTRIBUTES`,
-  `DISCOVER_LIST_PROTOCOLS`) and uses the one tx/rx channel pair for all
-  of them.
+- **[HW]** Under ACPI the per-protocol child devices carry **no channels
+  of their own**. A client discovers protocols with the SCMI Base protocol
+  (`PROTOCOL_ATTRIBUTES`, `DISCOVER_LIST_PROTOCOLS`) and uses the one
+  tx/rx channel pair for all of them.
+- **[HW]** *(vendor)* The `CIXHA006` device does have protocol child
+  nodes, for example `\_SB.SCMI.DVFS` with an integer `reg` = `0x13`
+  (performance protocol). They may report `_STA` = 0 (namespace-only
+  stubs), so they must be looked up even when "not present". Consumers
+  (GPU, NPU) name performance domains through a `_DSD` `power-domains`
+  reference to such a child plus a domain index; the child is the
+  provider handle, not a separate device to probe.
 
 > OPEN QUESTION: Which of `CIXHA004` and `CIXHA005` is tx and which is rx
 > is not stated; follow the `shmem` order. The source only names

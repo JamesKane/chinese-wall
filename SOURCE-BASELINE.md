@@ -91,3 +91,9 @@ No DSDT/SSDT/GTDT binaries were available.
 ## Priority 3 sources (sky1-audio, sky1-peripherals)
 
 Mainline at the baseline: `drivers/clk/cix/clk-sky1-audss.c`, `drivers/reset/reset-sky1-audss.c`, the CIX IPbloq HDA controller under `sound/hda/controllers/`, `drivers/dma/arm-dma350.c`, `drivers/gpio/gpio-cadence.c`, `drivers/i2c/busses/i2c-cadence.c`, `drivers/spi/spi-cadence*.c`, `drivers/pinctrl/cix/*`, the related bindings and headers (GPL-2.0; bindings dual-licensed). `Sky1-Linux/linux-sky1@57e018a` patches 0003, 0004, 0007, 0012, 0020, 0056, 0058, 0062, 0065, 0067, 0079, 0080, 0083, 0091, 0094, 0102, 0107, 0134, 0138 (GPL-2.0). Vendor DT `Sky1-Linux/linux@665339c` (BSD-3-Clause). `acpi-to-dts-tools@9ddd22c` (MIT). Exact files and line ranges are in `provenance/sky1-audio/` and `provenance/sky1-peripherals/`.
+
+## Priority 4 sources (linlon-vpu, zhouyi-npu)
+
+`Sky1-Linux/linux-sky1@57e018a` patches 0010 (CIX/Arm China Linlon VPU driver, `drivers/media/platform/cix/`), 0127; 0009 (Arm China Zhouyi NPU driver, `drivers/misc/armchina-npu/`), 0101, 0103, 0132, 0139. Vendor DT `Sky1-Linux/linux@665339c` (BSD-3-Clause). `acpi-to-dts-tools@9ddd22c` (MIT). Mainline has neither driver at the baseline.
+
+Licence notes: the VPU driver files carry SPDX `GPL-2.0-only` but their headers also contain an Arm China "confidential and proprietary" notice and an "or later" paragraph, which contradict each other. The NPU driver is GPL-2.0; its uapi header `armchina_aipu.h` is `GPL-2.0 WITH Linux-syscall-note` (not MIT).

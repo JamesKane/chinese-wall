@@ -31,6 +31,8 @@ Writing rules are in [CLAUDE.md](CLAUDE.md). The upstream revision is in
 | [Sky1 DP TX](specs/sky1-dp-tx/README.md) | CIX Sky1 Trilinear DisplayPort transmitter, USB-C/DP combo PHY, eDP PHY and panel, PS185 bridge | Draft |
 | [Sky1 audio](specs/sky1-audio/README.md) | CIX Sky1 audio subsystem: clock/reset unit, IPbloq HDA, I2S, DMA-350, DSP | Draft |
 | [Sky1 peripherals](specs/sky1-peripherals/README.md) | CIX Sky1 Cadence GPIO, I2C, SPI/QSPI, RTS5453H USB-PD, pinctrl | Draft |
+| [Linlon VPU](specs/linlon-vpu/README.md) | Arm China Linlon / Mali-V video codec (CIXH3010): MMU, firmware interface, V4L2 ABI | Draft |
+| [Zhouyi NPU](specs/zhouyi-npu/README.md) | Arm China Zhouyi X2 v3 NPU (CIXH4000): registers, job model, /dev/aipu ABI | Draft |
 
 ## Reviewing a spec before release
 
