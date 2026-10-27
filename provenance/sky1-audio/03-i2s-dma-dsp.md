@@ -1,0 +1,13 @@
+# Provenance: sky1-audio/03-i2s-dma-dsp
+
+- Baseline: mainline d135ab453a7400a34930bdda1ef4bdc8acfac80e plus Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f (patches) and Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 (vendor DT)
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Only facts (offsets, bits, IDs, addresses, sequences, table formats) taken; no code or comments copied.
+- Sources read:
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches 0007: 5243-6395 (vendor cdns_i2s_mc.c: register map, reset defaults, field semantics, format encodings, hw_params rules, FIFO-reset ordering, start/stop, ISR, devtype data, DMA burst, PM), 6395-6560 (single-channel layout, only to note it differs), 4523-5165 (card-utils: link init, MCLK, jack handling, PM hooks), 7597-7664 (sky1-card)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches 0007: 273-1466 (vendor arm-dma350.c changes; notably 314-345 trigger config fields and NSEC/AP_IRQ offsets, 415-530 address translation and command-link layout, 895-915 AP_IRQ routing, 940-975 DT xlate cells, 1310-1340 NSEC interrupt enable and shared IRQ fallback)
+  - mainline drivers/dma/arm-dma350.c (GPL-2.0): 20-150 (register/field names cross-check, CH_CTRL trigger bits), 600-669 (match table; memcpy-only)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches 0007: 1708-2820 (vendor cix_dsp_rproc.c: 1737-1760 INFO_HIFI bits, 1785-1804 memory map, 1833-1840 message codes, 1960-2102 stall/run/vector/start sequence, 2120-2160 stop and kick format, 2346-2530 watchdog, receive handling, vring polling)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches 0065: 80-140 (CIXH1006, CIXHA014), 0106: 1-30 (FCH DMA clock in another CLKT), 0094: 46-128 (remote-ctrl SError note), 0102: all (DSP ACPI: cix,dsp-ctrl, optional clocks/resets, WB mapping of DRAM regions), 0107: 131-270 (ACPI DMA xlate: slave_id/chan_id, 0xFF), 356-545 (fixed ACPI topology, card name, DAI names, jack names, I2S5-9 format, tx/rx channel names), 0114: all (ram-map/reg-map via _DSD, AP_IRQ storm symptom), 0134: all (skip missing I2S), 0056: 1-20 (DMA-before-I2S trigger ordering)
+  - Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 arch/arm64/boot/dts/cix/sky1.dtsi (BSD-3-Clause): 596-631, 1132-1144 (FCH DMA), 1221-1443 (DSP, audio DMA, I2S0-9), 1467-1484 (mailboxes)
+  - Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 arch/arm64/boot/dts/cix/sky1-orion-o6.dts (BSD-3-Clause): 21-136 (card links), 954-1073 (DMA request lines per I2S, pin masks, enables)

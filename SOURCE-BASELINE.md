@@ -87,3 +87,7 @@ No DSDT/SSDT/GTDT binaries were available.
 | `Sky1-Linux/linux` branch `main` | `665339c` | `sky1.dtsi` GPU node, protected region; DP/PHY/panel nodes | BSD-3-Clause |
 | `Sky1-Linux/sky1-firmware` | `dd81690747ddb092bcc2a221daa0f8f679ee4bc4` | `README.md`, `debian/rules` (GPU firmware install path only; binaries not inspected) | packaging; firmware proprietary |
 | `Sky1-Linux/acpi-to-dts-tools` | `9ddd22c` | `examples/generated-o6-from-acpi.dts` | MIT |
+
+## Priority 3 sources (sky1-audio, sky1-peripherals)
+
+Mainline at the baseline: `drivers/clk/cix/clk-sky1-audss.c`, `drivers/reset/reset-sky1-audss.c`, the CIX IPbloq HDA controller under `sound/hda/controllers/`, `drivers/dma/arm-dma350.c`, `drivers/gpio/gpio-cadence.c`, `drivers/i2c/busses/i2c-cadence.c`, `drivers/spi/spi-cadence*.c`, `drivers/pinctrl/cix/*`, the related bindings and headers (GPL-2.0; bindings dual-licensed). `Sky1-Linux/linux-sky1@57e018a` patches 0003, 0004, 0007, 0012, 0020, 0056, 0058, 0062, 0065, 0067, 0079, 0080, 0083, 0091, 0094, 0102, 0107, 0134, 0138 (GPL-2.0). Vendor DT `Sky1-Linux/linux@665339c` (BSD-3-Clause). `acpi-to-dts-tools@9ddd22c` (MIT). Exact files and line ranges are in `provenance/sky1-audio/` and `provenance/sky1-peripherals/`.

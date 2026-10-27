@@ -105,7 +105,14 @@ flags). The consumer must not be started before the supplier.
 > flags in the Sky1-Linux driver. Treat it as "ordering only" in another
 > OS.
 
-### 2.3.3 `CIXA1019`
+### 2.3.3 RSVL: reserved memory
+
+**[HW]** *(vendor)* A further CIX table on `CIXA1019`, used for the HDA
+controller's reserved DMA memory: entries (base, size, flags, consumer
+device). It is the ACPI stand-in for a DT `memory-region`. See the audio
+spec (sky1-audio 02) for the known entry and open questions on the flags.
+
+### 2.3.4 `CIXA1019`
 
 - **[HW]** The ACPI device whose presence means "process the CIX lookup
   tables". (Note the HID is `CIXA1019`, not `CIXHA019`, which is an
