@@ -22,7 +22,7 @@ clean room and are not restated here.
 | # | Section | Status |
 |---|---------|--------|
 | 01 | [Clock and reset controllers (APBS PLLs, MPMU, APBC, APMU, DCIU)](01-clocks-resets.md) | draft: PLL word decoding inferred (consistent with vendor firmware); C0/C1-to-cluster order unconfirmed |
-| 02 | [Pin controller and GPIO](02-pinctrl-gpio.md) | not started |
+| 02 | [Pin controller and GPIO](02-pinctrl-gpio.md) | draft: GPIO controller for pads 128–152 and the `CPMASK` register unknown |
 | 03 | [SD/MMC host (SDHCI deltas from K1)](03-sdhci.md) | not started |
 | 04 | [I2C (TWSI)](04-i2c.md) | not started |
 | 05 | [P1 PMIC](05-pmic-p1.md) | not started |

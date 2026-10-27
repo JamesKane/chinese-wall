@@ -422,6 +422,9 @@ must be set to 1 as well as selecting mux option 7.
 | `0x064` | counter clock select (not driven) | `0x164` | SSPA5 (I2S5) |
 | `0x06C` | TSEN (thermal sensor) | | |
 
+Offsets `0x050` and `0x054` are not clocks: they take the unlock keys for the
+pin controller's I/O power-domain registers (02 §2.3).
+
 There is no UART1, SSP2, TWSI3 or TWSI7 in this block. Those instances belong
 to other (secure or real-time) domains not described in the baseline.
 
