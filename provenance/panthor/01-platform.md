@@ -1,0 +1,23 @@
+# Provenance: 01-platform
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read:
+  - Documentation/devicetree/bindings/gpu/arm,mali-valhall-csf.yaml (all; §1.1, §1.2 example)
+  - arch/arm64/boot/dts/rockchip/rk3588-base.dtsi:449-466 (GPU node), 885-901 (pd_gpu), 3225-3251 (gpu-thermal), 3391-3393 (gpu-leakage OTP cell, not used by driver)
+  - arch/arm64/boot/dts/rockchip/rk3588-opp.dtsi:118-150, 188-190 (GPU OPP table)
+  - arch/arm64/boot/dts/rockchip/rk3588j.dtsi:69-100, 127-129 (RK3588J GPU OPP table)
+  - arch/arm64/boot/dts/rockchip/rk3588.dtsi, rk3588s.dtsi, rk3588-extra.dtsi (include structure only)
+  - arch/arm64/boot/dts/rockchip/rk3588-orangepi-5.dtsi:216-219, 373-375; rk3588-rock-5b-5bp-5t.dtsi:180-182, 505-507, 703-716 (board supplies, shared vdd_gpu/vdd_gpu_mem regulator, off-in-suspend)
+  - arch/arm64/boot/dts/rockchip/rk3588-mnt-reform2.dts:146, rk3588-evb2-v10.dts:141 (boards with GPU sram-supply; grep only)
+  - drivers/gpu/drm/panthor/panthor_device.c:30-62 (clocks, PD attach), 64-115 (unplug), 166-328 (init order), 474-613 (resume/suspend)
+  - drivers/gpu/drm/panthor/panthor_device.h:37-63 (SoC data, PM states), 134-339 (device state fields), 384-430 (reset scheduling, resume-and-get recovery)
+  - drivers/gpu/drm/panthor/panthor_devfreq.c (all)
+  - drivers/gpu/drm/panthor/panthor_devfreq.h (all)
+  - drivers/gpu/drm/panthor/panthor_drv.c:1816-1834 (probe/remove), 1875-1900 (SoC data, of_match, PM ops)
+  - drivers/gpu/drm/panthor/panthor_gpu.c:60-87 (coherency write, ASN hash), 151-186 (DMA mask, IRQ), 486-510 (coherency selection)
+  - drivers/gpu/drm/panthor/panthor_hw.c:176-192 (shader-present nvmem override)
+  - drivers/gpu/drm/panthor/panthor_fw.c:1488-1530 (job IRQ and L2 power-up during FW init)
+  - drivers/gpu/drm/panthor/panthor_sched.c:2612-2630, 3366-3375 (devfreq busy/idle marking)
+  - include/uapi/drm/panthor_drm.h:262-280, 345-360 (coherency enum, selected_coherency)
+- Not read: Rockchip power-domain driver (drivers/pmdomain/rockchip), RK3588 CRU/SCMI clock drivers, Linux OPP/regulator-coupling core. Statements about their behavior are generic or marked OPEN QUESTION.

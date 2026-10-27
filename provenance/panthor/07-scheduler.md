@@ -1,0 +1,28 @@
+# Provenance: 07-scheduler
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read (sub-ranges for panthor_sched.c are approximate):
+  - drivers/gpu/drm/panthor/panthor_sched.c (all, 1-4259)
+    - 7.1 slot clamps, AS count, scoreboard/CS counts: 4072-4115 (sched init)
+    - 7.2 resource allocation: 3440-3560 (queue create), 3610-3720 (group create); syncobj formats 296-330; queue iface/profiling fields 340-470
+    - 7.3 state machine: 472-505, 1163-1235 (state sync); CS/CSG programming 1000-1050, 1237-1290; bind/unbind 2160-2230; batched requests 2246-2320
+    - 7.4 ring sequence and encodings: 3180-3330; job write 3300-3400; completion 1665-1745; credits/profiling slot count 3418-3440
+    - 7.5/7.6 tick: 2322-2530 (pick/insert/init), 2600-2770 (apply), 2770-2905 (resched target, tick), 2960-3040 (schedule on new work, resume tick)
+    - 7.7 queue state analysis: 1100-1162
+    - 7.8 sync waits: 812-870 (syncwait object), 2905-2960 (eval + sync update)
+    - 7.9 event processing: 1612-1630, 1746-1890
+    - 7.10 faults/timeouts/termination/tiler OOM: 940-1000 (timeouts), 1292-1612, 2520-2580 (term post-processing), 3400-3418 (timedout job), 3418-3440 (timeout work)
+    - 7.11 reset: 3130-3175 (pre/post reset), 3040-3075 (group stop/start)
+    - 7.12 suspend/resume: 3075-3130 (suspend, resume)
+    - 7.13 validation: 3460-3475 (queue args), 3600-3620 (group args), 3880-3960 (job create)
+  - drivers/gpu/drm/panthor/panthor_sched.h (all)
+  - drivers/gpu/drm/panthor/panthor_fw.h:12-277 (CS/CSG/GLB interface bit definitions), 410-516 (req/ack helpers, prototypes)
+  - drivers/gpu/drm/panthor/panthor_fw.c:34-37 (progress/idle timer constants), 209-217 (iface version, unpreserved reg count), 335-367 (64-bit endpoint request selection), 470-540 (queue iface memory, suspend buffer allocation), 900-935 (CS features, work reg count), 1069-1085 (GLB timers, idle enable), 1098-1130 (JOB IRQ handler), 1227-1290 (pre/post reset), 1340-1480 (ack wait, doorbells)
+  - drivers/gpu/drm/panthor/panthor_fw_regs.h (all; JOB_INT bits, doorbell offsets)
+  - drivers/gpu/drm/panthor/panthor_device.c:120-155 (reset work order), 520-540 (resume), 585-610 (suspend)
+  - drivers/gpu/drm/panthor/panthor_device.h:116-128 (profiling mask bits), 435-441 (exception codes)
+  - drivers/gpu/drm/panthor/panthor_drv.c:317-352 (sync-op validation), 895-930 (priority permission), 1106-1250 (group submit/create/destroy ioctls)
+  - drivers/gpu/drm/panthor/panthor_heap.c:440-480 (heap grow return codes, ENOMEM on limit)
+  - drivers/gpu/drm/panthor/panthor_gpu_regs.h:33-56 (cross-check of 02-register-map)
+  - include/uapi/drm/panthor_drm.h:200-232, 849-867, 1030-1050 (sync op flags, priorities, group state flags)

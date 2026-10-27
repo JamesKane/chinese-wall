@@ -1,0 +1,37 @@
+# Provenance: 04-mmu
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read:
+  - drivers/gpu/drm/panthor/panthor_mmu.c (all, 1-3516)
+    - 4.2 slot management: 42-111, 685-855, 881-884
+    - 4.3 enable/disable/command protocol: 536-568, 599-661, 709-828
+    - 4.4 LOCK/UNLOCK and AS_LOCKADDR: 570-597, 1776-1856, 2713-2767
+    - 4.6 page-table config, table allocation, leaf sizing: 443-534, 886-905, 924-1047, 1282-1309, 1413-1460, 2851-2975, 3377-3380, 3501-3516
+    - 4.6.2 map flags to protection: 1073-1089
+    - 4.7 MAIR to AS_MEMATTR: 2178-2218, 2941-2942
+    - 4.8.1/4.8.2 VA layout: 1091-1147, 1506-1617, 2892-2906, 3428-3435
+    - 4.8.3-4.8.5 bind semantics, sparse, split/remap, sync/async: 113-216, 1049-1071, 1311-1467, 1483-1504, 2243-2464, 2769-2838, 2977-3248
+    - 4.8.6 reclaim/eviction: 2466-2692, 3250-3345
+    - 4.9 faults and IRQ: 657-683, 907-922, 1758-1774, 1858-1926
+    - 4.10 destruction: 1619-1742, 2036-2089
+    - 4.11 suspend/resume/reset/unplug: 1928-2034, 3347-3370, 3388-3444
+  - drivers/gpu/drm/panthor/panthor_mmu.h (all)
+  - drivers/gpu/drm/panthor/panthor_mmu_regs.h (all)
+  - drivers/gpu/drm/panthor/panthor_gpu_regs.h:27-49 (MMU_FEATURES fields, GPU_CMD flush encoding)
+  - drivers/gpu/drm/panthor/panthor_gpu.c:150-180 (DMA mask from PA bits), 342-390 (cache flush, 100 ms timeout, single in-flight), 485-509 (coherency detection, ACE-Lite)
+  - drivers/gpu/drm/panthor/panthor_device.h:505-562 (64-bit access helpers, poll helpers), 569-700 (generic IRQ scheme, enable/disable events)
+  - drivers/gpu/drm/panthor/panthor_hw.c:20-60, 200-300 (arch 10-13 vs 14 ops: no MMU differences)
+  - drivers/gpu/drm/panthor/panthor_fw.c:200-205 (MCU shared region), 490-540 (FW kernel BO flags), 640-690 (FW section map flags/cache mode), 1255-1330 (MCU VM activation after reset, unplug), 1515-1545 (MCU VM creation)
+  - drivers/gpu/drm/panthor/panthor_gem.c:85-120 (coherent vs WC mapping), 1275-1345 (kernel BO VA alloc and GPU-page rounding), 1358-1373 (2 MiB sparse dummy BO)
+  - drivers/gpu/drm/panthor/panthor_heap.c:150-160 (heap chunk map flags)
+  - drivers/gpu/drm/panthor/panthor_sched.c:1370-1380 (CSG config = AS id), 1910-1980 (bind/unbind -> active/idle), 2110-2145 (VM count limit per tick), 2205-2225 (fault -> all queues faulty), 2860-2890 (report fault, prepare for VM destruction), 4040-4050, 4110-4135 (AS count check)
+  - drivers/gpu/drm/panthor/panthor_drv.c:1000-1030 (VM create), 1165-1185 (job submit validates VM BOs), 1336-1475 (VM_BIND sync/async, VM state)
+  - include/uapi/drm/panthor_drm.h:555-745 (VM create/bind flag values and semantics; MIT)
+  - drivers/iommu/io-pgtable-arm.c: 27-136 (descriptor bit meanings, MAIR constants), 255-365 (non-coherent table DMA mapping/sync, phys==dma requirement), 515-580 (prot to PTE bits), 940-1080 (granule/level calculation, s1 config, oas switch, MAIR value). Consulted for configuration meaning only; nothing transcribed.
+  - arch/arm64/boot/dts/rockchip/rk3588-base.dtsi GPU node (no dma-coherent property)
+  - specs/panthor/02-register-map.md (cross-reference)
+- Derived values (computed by extractor, not present in source): AS_MEMATTR words 0x4C4C4C4C_8C4C8F4C / 0x4C4C4C4C_9C4C9F4C; AS_TRANSCFG 0x420001C6 / 0x620001C6 for 48-bit VA; GPU_CMD flush word 0x00023304; LOCKADDR worked example.
+- Observations for the dirty room (not in spec as bugs):
+  - pack_region_range clears bits below region_width rather than below region_width+1, so when the 32 KiB minimum clamps, the recorded locked_region.start can be 16 KiB above the hardware-locked base; later "already inside locked region" checks use the recorded value.
+  - panthor_vm_active on a VM that still holds a slot but was disabled by panthor_vm_declare_unusable (not in faulty_mask) takes the fast path and does not re-enable the AS.

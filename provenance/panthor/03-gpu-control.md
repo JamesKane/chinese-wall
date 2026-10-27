@@ -1,0 +1,21 @@
+# Provenance: 03-gpu-control
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read:
+  - drivers/gpu/drm/panthor/panthor_hw.c (all; ID check, arch binding, feature reads, present masks)
+  - drivers/gpu/drm/panthor/panthor_hw.h (all; arch>=14 PWR split, ops)
+  - drivers/gpu/drm/panthor/panthor_gpu.c (all; IRQ handler, L2 power on/off, flush, soft reset, suspend/resume, timestamps, coherency)
+  - drivers/gpu/drm/panthor/panthor_gpu.h (all)
+  - drivers/gpu/drm/panthor/panthor_gpu_regs.h (all; cross-check against 02)
+  - drivers/gpu/drm/panthor/panthor_pwr.c (all; reset, domain transitions, delegate/retract, L2 on/off)
+  - drivers/gpu/drm/panthor/panthor_pwr.h (all)
+  - drivers/gpu/drm/panthor/panthor_pwr_regs.h (all; cross-check against 02)
+  - drivers/gpu/drm/panthor/panthor_device.c:117-154 (reset work), 166-328 (init), 399-472 (MMIO fault/mmap), 474-613 (resume/suspend)
+  - drivers/gpu/drm/panthor/panthor_device.h:65-110 (IRQ state), 273-321 (reset/PM fields), 384-402 (schedule reset), 498-695 (MMIO accessors, IRQ model)
+  - drivers/gpu/drm/panthor/panthor_fw.c:33-38 (ping/halt constants), 375-411 (timer source), 1084-1085 (GLB_COUNTER_EN), 1132-1224 (MCU start/stop/halt), 1225-1340 (pre/post reset, unplug), 1465-1530 (ping work, FW init)
+  - drivers/gpu/drm/panthor/panthor_fw.h:515-527 (suspend/resume = pre/post reset)
+  - drivers/gpu/drm/panthor/panthor_mmu.c:540-552 (AS_ACTIVE stuck reset), 625-640, 1830-1856 (flush parameters), 1970-2020 (MMU pre/post reset)
+  - drivers/gpu/drm/panthor/panthor_sched.c:1307-1316, 1418-1427, 2224-2234, 2397-2407, 2435-2464 (reset triggers), 2970-2995 (suspend flush)
+  - drivers/gpu/drm/panthor/panthor_drv.c:766-890 (timestamp query), 1517-1530 (SET_USER_MMIO_OFFSET), 1595-1615 (per-file MMIO base), 1675-1700 (mmap dispatch), 1770-1790 (driver version history), 1845-1870 (profiling attribute)
+  - include/uapi/drm/panthor_drm.h:49-73 (user MMIO offsets), 133-146 (SET_USER_MMIO_OFFSET)

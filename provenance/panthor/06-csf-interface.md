@@ -1,0 +1,28 @@
+# Provenance: 06-csf-interface
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read:
+  - drivers/gpu/drm/panthor/panthor_fw.h (all; interface block layouts, bit definitions, toggle/update helpers, halt status enum)
+  - drivers/gpu/drm/panthor/panthor_fw.c:28-38 (ping interval, progress/idle/power-off constants, halt timeout)
+  - drivers/gpu/drm/panthor/panthor_fw.c:195-217 (shared region, MIN_CSGS/MIN_CS_PER_CSG, version macros, group/stream control offsets, unpreserved reg count)
+  - drivers/gpu/drm/panthor/panthor_fw.c:325-411 (version gates 4.0/4.1, endpoint req 32/64-bit selection, timer conversion)
+  - drivers/gpu/drm/panthor/panthor_fw.c:473-540 (queue interface memory layout, suspend buffer allocation)
+  - drivers/gpu/drm/panthor/panthor_fw.c:636-692 (section cache mode and shared-section mapping)
+  - drivers/gpu/drm/panthor/panthor_fw.c:860-1096 (MCU VA translation, CSG/CS/GLB interface discovery and validation, instr_features gate 1.1.0, global interface init)
+  - drivers/gpu/drm/panthor/panthor_fw.c:1098-1340 (JOB IRQ handling, MCU start/stop, halt via GLB_HALT vs GLB_STATE, pre/post reset)
+  - drivers/gpu/drm/panthor/panthor_fw.c:1338-1485 (ack wait semantics, doorbell ring, CSG doorbell toggle, ping work)
+  - drivers/gpu/drm/panthor/panthor_fw_regs.h (all; doorbell address, JOB_INT bits, MCU_STATUS values)
+  - drivers/gpu/drm/panthor/panthor_sched.c:96-98 (MAX_CSG_PRIO, cache-line instruction padding)
+  - drivers/gpu/drm/panthor/panthor_sched.c:305-345 (sync object 32/64-bit layouts)
+  - drivers/gpu/drm/panthor/panthor_sched.c:1095-1400 (CS slot programming/reset, priority sync, CS status interpretation, CSG state decode, CSG slot programming)
+  - drivers/gpu/drm/panthor/panthor_sched.c:1400-1660 (CS fatal/fault/tiler-OOM handling, CS IRQ processing)
+  - drivers/gpu/drm/panthor/panthor_sched.c:1760-1960 (CSG IRQ processing order, global idle event, doorbell assignment csg_id+1)
+  - drivers/gpu/drm/panthor/panthor_sched.c:2020-2080, 2210-2235, 2350-2470 (CSG request batching, ack checks, status update, priority update, start/resume)
+  - drivers/gpu/drm/panthor/panthor_sched.c:2650-2730 (host sync-wait evaluation)
+  - drivers/gpu/drm/panthor/panthor_sched.c:2880-2960 (suspend/terminate escalation)
+  - drivers/gpu/drm/panthor/panthor_sched.c:3126-3150, 3320-3370, 3500-3520 (ring buffer write and wrap, submission ordering and doorbell, ring size limits)
+  - drivers/gpu/drm/panthor/panthor_sched.c:3675-3700, 4095-4135 (suspend buffer sizes, CSG slot clamp, scoreboard count)
+  - drivers/gpu/drm/panthor/panthor_heap.c:470-490 (heap chunk pointer encoding returned for TILER_OOM)
+  - include/uapi/drm/panthor_drm.h:380-410 (csif_info fields)
+- Offsets cross-checked by compiling the struct layouts (types only, no driver code) in a scratch directory and printing offsetof/sizeof. All tabulated offsets match.

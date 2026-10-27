@@ -1,0 +1,37 @@
+# Provenance: 05-firmware
+
+- Baseline: d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Sources read:
+  - drivers/gpu/drm/panthor/panthor_fw.c (all, 1-1565)
+    - 31-38: file name, ping interval, progress/idle/poweroff timeouts, halt timeout (5.1, 5.6.3, 5.7, 5.8)
+    - 40-151: file header, entry types, entry header bits, section flags, section and build-info layouts (5.2)
+    - 203-217: shared region VA/size, MIN_CS_PER_CSG/MIN_CSGS, version encoding, group/stream control offsets, unpreserved reg count (5.3.1, 5.4)
+    - 326-338: version gates 4.0.0 / 4.1.0 (5.4.7)
+    - 369-411: timeout conversion and timer source (5.6.2)
+    - 413-470: bounds-checked reads, section init (copy + zero-fill) (5.2, 5.3.4)
+    - 489-537: queue interface and suspend buffer allocation flags (5.3.4)
+    - 539-693: section entry validation and mapping (5.2.3, 5.3.3, 5.3.4)
+    - 695-733: build-info parsing (5.2.4)
+    - 735-753: section reload (5.7.3)
+    - 755-865: entry dispatch, header validation, firmware path (5.1, 5.2)
+    - 867-1059: MCU-VA-to-CPU conversion, CSG/CS/global iface discovery and checks (5.4)
+    - 1061-1096: initial global configuration (5.6)
+    - 1098-1130: JOB IRQ handler (5.9)
+    - 1132-1224: MCU start/stop/halt/set-active (5.5, 5.7)
+    - 1234-1335: pre/post reset, unplug (5.7)
+    - 1349-1403, 1442-1486: ack waits, doorbell, ping watchdog (5.6, 5.8)
+    - 1494-1557: init order (5.5)
+    - 1559-1565: MODULE_FIRMWARE list (5.1)
+  - drivers/gpu/drm/panthor/panthor_fw.h (all, 1-532): interface struct layouts used to derive offsets and bounds-check sizes, GLB_* bit encodings, timer encoding, halt status codes, suspend/resume aliases (5.4, 5.6, 5.7, 5.8)
+  - drivers/gpu/drm/panthor/panthor_fw_regs.h (all, 1-29): MCU_CONTROL/STATUS values, JOB bits, doorbells
+  - drivers/gpu/drm/panthor/panthor_device.c:120-152 (reset work order), 255-300 (init order), 474-640 (suspend/resume, fast/slow retry)
+  - drivers/gpu/drm/panthor/panthor_device.h:280-295 (reset.fast), 385-402 (schedule reset), 540-670 (IRQ raw/threaded handlers, suspend/resume/enable helpers)
+  - drivers/gpu/drm/panthor/panthor_mmu.c:604-617 (AS enable), 700-830 (VM activation, AS 0 for MCU, TRANSCFG), 857-863 (VM page size), 1074-1088 (map flags to prot), 2178-2219 (MAIR to AS_MEMATTR), 2852-2963 (VM create, 4 GiB MCU range), 3379 (page size bitmap 4K|2M)
+  - drivers/gpu/drm/panthor/panthor_mmu_regs.h:18-30 (AS_MEMATTR field macros)
+  - drivers/gpu/drm/panthor/panthor_gem.c:89-118 (WC vs cached CPU mapping), 1300-1350 (kernel BO creation, page-size alignment, pinning)
+  - drivers/gpu/drm/panthor/panthor_gpu.c:297-321 (L2 power-on prerequisites), 447-468 (GPU suspend/resume fast vs slow)
+  - drivers/gpu/drm/panthor/panthor_gpu_regs.h:10-11 (GPU_ARCH_MAJOR/MINOR)
+  - drivers/gpu/drm/panthor/panthor_sched.c:1850-1901 (global event processing, IDLE ack, CSG dispatch), 1385-1389 and 3695-3699 (protm suspend buffer)
+  - drivers/iommu/io-pgtable-arm.c:127-136, 535-575, 1069-1076 (MAIR index values and PTE attribute selection, used to compute AS_MEMATTR table values in 5.3.3)
+- Derived values (computed, not copied): AS_MEMATTR full register values; ACK_IRQ_MASK hex values; progress timer value 2 560 000; RK3588 timer worked example (assumes 24 MHz system counter); struct field offsets and sizes computed from natural alignment of the header structs.
