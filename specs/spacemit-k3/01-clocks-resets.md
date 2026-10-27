@@ -58,11 +58,17 @@ GPL-2.0-only OR BSD-2-Clause and may be used directly. The `CLK_` and
   clock). Others are "reserved". The baseline devicetree supplies neither.
   Treat both as unusable: never select those mux values.
 
-> OPEN QUESTION: The Linux driver looks up the 32 kHz parent under a name
-> that does not match the devicetree `clock-names` entry `osc`. On Linux that
-> parent probably never resolves, so the affected clocks (slow UART gate, PWM
-> option 1, timer option 1, RTC) would have no known rate. A new driver should
-> bind the 32 kHz input by its DT name `osc`.
+- **[ABI]** The binding names the 32 kHz input `osc` in the MPMU, APBC
+  and APMU nodes, and the mainline devicetree follows it. Bind it by that
+  name. The mainline Linux K3 driver looks it up under a different name,
+  so on Linux the dependent clocks (slow UART gate, PWM option 1, timer
+  option 1, RTC) have no parent rate. Do not copy that. *(vendor)* The
+  vendor devicetree uses `osc_32k` as the `clock-names` entry instead, so a
+  driver that also accepts `osc_32k` can boot the vendor devicetree too.
+- **[HW]** The 32 kHz clock comes from the MPMU slow-clock register `SCCR`
+  (offset `0x038`). Bit 0 selects the source: 0 (reset value) = derived from
+  the 24 MHz reference by a divider, 1 = the external 32 kHz input pin.
+  Neither Linux driver touches it; leave it as firmware set it.
 
 ## 1.3 Building blocks
 
@@ -139,8 +145,15 @@ other than [16] and [15:8] gate that PLL's divided outputs (§1.5).
 | Register | Bits | Meaning |
 |---|---|---|
 | `SWCR1` | [31:0] | Configuration word (§1.4.4), written whole |
-| `SWCR2` | [16] | PLL enable (1 = running) |
+| `SWCR2` | [31] | Divide-by-64 output enable (PLL1 only) |
+| `SWCR2` | [30:28] | Test enables (clock, digital, analog). Keep 0. |
+| `SWCR2` | [27:23] | Post-divider value *n*: divided output = PLL ÷ (*n* + 1) |
+| `SWCR2` | [22] | Post-divider output enable |
+| `SWCR2` | [21] | Divide-by-10 output enable |
+| `SWCR2` | [20:17] | Frequency monitor: [17] enables it, [20:18] is its divider. Keep 0. |
+| `SWCR2` | [16] | PLL enable / power-up (1 = running) |
 | `SWCR2` | [15:8] | Low byte of the fractional feedback (§1.4.4) |
+| `SWCR2` | [7:0] | Divide-by-8 … divide-by-1 output enables (bit 7 = ÷8, bit 0 = ÷1) |
 | `SWCR3` | [31:0] | Configuration word (§1.4.4), written whole |
 
 ### 1.4.2 Enable, disable and lock
@@ -197,10 +210,23 @@ BSD-2-Clause-Patent, so the clean room may read it directly; see the README.
 At boot, that firmware also turns on all of each PLL's divided outputs:
 `SWCR2` bits 0–7 and bit 21.
 
-> OPEN QUESTION: Several things here are unconfirmed. The doubler may act on
-> the reference or on the output. The band byte probably selects a VCO or
-> charge-pump range; its observed mapping is in the table below, but its rule
-> is not known. The meaning of the constant fields is also unknown.
+The doubler is not a multiplier after the oscillator. Rate pairs that
+differ only by `SWCR3` bit 20 (for example 1100 and 2200 MHz, 1200 and
+2400 MHz) use different band bytes, so the oscillator itself runs at the
+final rate. Bit 20 therefore most likely doubles the reference or halves
+the feedback divider. The public user manual's reset values for PLL3 and
+PLL4 decode to 2200 MHz with this formula, which is also the vendor
+firmware's default for those two PLLs.
+
+The band byte rises about one step per 150–200 MHz of output: `0x80` at
+1050 MHz, `0x81` from 1100 to 1250 MHz, … `0x89` at 2400–2457.6 MHz, `0x8A`
+at 2600, `0x8B` at 2800, `0x8C` at 3000, `0x8E` at 3200. `0x8D` never
+appears. Treat it as a lookup from the tables in §1.4.5.
+
+> OPEN QUESTION: The exact rule for the band byte, and the meaning of the
+> constant fields (`SWCR1`[31:24] = `0x0B`, `SWCR3`[31:24] = `0xA0`, and
+> `SWCR3`[23:16] apart from bit 20). The user manual only names these bytes
+> as opaque configuration registers.
 
 ### 1.4.5 Supported rates
 
@@ -481,10 +507,20 @@ fields.
 - **[POLICY]** An OS that runs only on the X100 harts should leave C2, C3,
   PLL5 and PLL8 as firmware configured them.
 
-> OPEN QUESTION: It is not yet confirmed that C0 serves mainline `cluster0`
-> (harts 0–3) and C1 serves `cluster1` (harts 4–7). The vendor devicetree
-> attaches both C0 and C1 to every X100 hart. Check on hardware before doing
-> per-cluster frequency scaling.
+- **[HW]** The public user manual names the C0 and C1 registers as the
+  clocks for "CPU cluster 0" and "cluster 1". Its APMU CPU reset register
+  groups CPUs 0–3 with the C0 subsystem reset and CPUs 4–7 with C1. It
+  also gives PLL roles: PLL3 for clusters 0/1, PLL4 for cluster 1, PLL5 for
+  clusters 2/3, PLL8 for cluster 3. C1 and C3 each have a bit-13 select
+  between their own PLL and the shared one (PLL4/PLL3, PLL8/PLL5).
+- *(vendor)* The vendor kernel sets PLL3 and PLL4 to the same rate and
+  gives every X100 hart both C0 and C1 clocks, so it never relies on the
+  mapping. It also leaves C0/C1 mux index 4 (PLL3/PLL4 ÷2) unused. The
+  manual and mainline both define that index.
+
+> OPEN QUESTION: Nothing ties the manual's "CPU 4" to `mhartid` 4. C0 almost
+> certainly drives `cluster0` (harts 0–3) and C1 `cluster1` (harts 4–7), but
+> confirm on hardware before scaling the clusters independently.
 
 ### 1.8.2 Storage
 
@@ -564,7 +600,7 @@ are listed for completeness.
 | `APMU_LCD_DSC` (20) | `0x04C` | [31:29] | [27:25] | 26 (`0x044`) | bit 14 | `MPMU_PLL1_614`, `_491`, `_245P76`, `PLL7_D5`, `PLL2_D7`, `MPMU_PLL1_409P6`, `_51P2_AP`, `PLL2_D8` |
 | `APMU_LCD_PXCLK` (21) | `0x04C` | [23:21] | [19:17] | 30 (`0x044`) | bit 16 | as LCD_DSC, except index 5 = `PLL2_D4` |
 | `APMU_LCD_MCLK` (22) | `0x04C` | [7:5] | [4:1] | 29 (`0x044`) | bit 0 | `MPMU_PLL1_409P6`, `_491`, `_614`, `_307P2` |
-| `APMU_DSI4LN2_DSI_ESC` (47) | `0x26C` | [0] | — | — | bit 2 | as DSI_ESC; only indices 0–1 are reachable |
+| `APMU_DSI4LN2_DSI_ESC` (47) | `0x26C` | [1:0] | — | — | bit 2 | as DSI_ESC (51.2, 47.26, 25.6, 76.8 MHz); bit 3 is this clock's reset |
 | `APMU_DSI4LN2_LCD_DSC` (48) | `0x270` | [31:29] | [27:25] | 26 (`0x26C`) | bit 14 | `MPMU_PLL1_614`, `_491`, `PLL7_D5`, `PLL6_D6`, `PLL2_D7`, `MPMU_PLL1_409P6`, `_51P2_AP` |
 | `APMU_DSI4LN2_LCD_PXCLK` (49) | `0x270` | [23:21] | [19:17] | 30 (`0x26C`) | bit 16 | `MPMU_PLL1_614`, `_491`, `PLL7_D5`, `PLL6_D6`, `PLL2_D7`, `PLL2_D4`, `MPMU_PLL1_51P2_AP`, `PLL2_D8` |
 | `APMU_DSI4LN2_LCD_MCLK` (50) | `0x270` | [7:5] | [4:1] | 29 (`0x26C`) | bit 0 | as LCD_MCLK |
@@ -588,9 +624,9 @@ are listed for completeness.
 | `APMU_CAM_SRC1…4` (81–84) | — | — | fixed | — | — | `MPMU_PLL1_409P6` ÷15; `PLL2_D5` ÷25; `PLL2_D6` ÷20; `MPMU_PLL1_409P6` ÷16 (27.3, 24, 25, 25.6 MHz) |
 | `APMU_ISIM_VCLK0…3` (85–88) | `0x3F8` | [2:1], [10:9], [18:17], [26:25] | [6:3], [14:11], [22:19], [30:27] | — | bits 0, 8, 16, 24 | `APMU_CAM_SRC1` … `APMU_CAM_SRC4` (camera sensor master clocks) |
 
-> OPEN QUESTION: The DSI4LN2 escape clock lists four parents, but its mux
-> field is one bit wide. Either the field is really two bits wide (bits [1:0])
-> or only two parents exist. Display is out of scope at this baseline.
+The DSI4LN2 escape mux is two bits wide, per the public user manual and the
+vendor kernel. The mainline Linux driver programs only bit 0, so it cannot
+reach the last two parents.
 
 ## 1.9 DCIU clocks
 
@@ -691,8 +727,13 @@ CPU and die-to-die resets are **assert-high**. All are in `PMU_CC2_AP`
 - **[POLICY]** An OS normally leaves the CPU reset lines alone. Hart start and
   stop go through the SBI HSM extension.
 
-> OPEN QUESTION: Binding ID `APMU_ALZO` (30) exists, but nothing describes its
-> register or bit. Treat it as unimplemented.
+> OPEN QUESTION: Binding ID `APMU_ALZO` (30) exists, but no source gives its
+> register or bit. The user manual shows an "ALZO" block only as the source
+> of APLIC interrupt 119. Its function is unknown. Treat the reset as
+> unimplemented.
+
+*(vendor)* The vendor kernel drives the three UCIE reset bits (75–77) as one
+combined reset. Mainline exposes them separately.
 
 ### 1.10.4 DCIU
 

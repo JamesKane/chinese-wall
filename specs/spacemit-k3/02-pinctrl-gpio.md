@@ -32,6 +32,15 @@ pad register index for the last 21 pins:
 
 **[HW]** Offsets `0x20C` and `0x210` have no pad. Do not write them.
 
+*(vendor)* The vendor kernel also knows eleven eMMC pads (`EMMC_D0`–`D7`,
+`DS`, `CLK`, `CMD`) as pin IDs 153–163, at `(pin + 2) × 4` (`0x26C`–`0x294`).
+For those pins it does not use the pad's mux to make a GPIO; it sets bit 20
+of APMU register `0x104` instead. Neither the user manual's pad table nor
+mainline lists these pads.
+
+> OPEN QUESTION: Whether pads 153–163 exist at those offsets on all K3
+> parts, and what APMU `0x104` bit 20 does beyond the vendor's GPIO use.
+
 ### 2.1.1 Named pads
 
 | Pin ID | Pad | Offset | Pin ID | Pad | Offset |
@@ -72,7 +81,7 @@ One 32-bit register per pad. **[HW]** Field layout on K3:
 | [3] | `SPU` | Strong pull-up. Applies only when the pull-up is selected. |
 | [4] | `EDGE_RISE` | Pad edge detect on rising edge (wake-up logic, §2.5) |
 | [5] | `EDGE_FALL` | Pad edge detect on falling edge |
-| [6] | `EDGE_CLEAR` | Pad edge-detect clear / disable (see note below) |
+| [6] | `EDGE_CLEAR` | Pad edge-detect hold-off: while 1, the pad's latched edge is cleared and stays cleared (§2.5) |
 | [7] | `SLEW_EN` | Output slew-rate control enable |
 | [8] | `ST` | Input Schmitt trigger enable (K3 has one bit; K1 had two) |
 | [12:9] | `DRIVE` | Drive strength code 0–15 (§2.2.1) |
@@ -89,15 +98,17 @@ One 32-bit register per pad. **[HW]** Field layout on K3:
 | `101` | pull-down |
 | `110` | pull-up (add `SPU` for strong pull-up) |
 
-> OPEN QUESTION: Bit 6 is named as a "clear" control in one source and
-> as "no edge detection" in another. Whether it is a self-clearing
-> status clear or a level that disables pad edge detection is not shown.
-> Setting it on pads not used for wake-up is safe either way.
+**[HW]** Bit 6 is a level, not a self-clearing pulse. *(vendor)* The vendor
+kernel sets it to clear and hold off a pad's wake-up edge and clears it to
+arm the pad. At start-up it sets bit 6 and clears bits 4–5 on every pad.
+Set bit 6 on every pad that is not used for wake-up.
 
-**[HW]** The slew-rate field overlaps the top of the drive field. When
-`SLEW_EN` is set, bits [12:11] select the slew rate, so the two upper
-drive-code bits double as the slew setting. The devicetree `slew-rate`
-values map like this:
+The sources disagree on slew rate. The UEFI firmware and the vendor kernel
+define only the enable (bit 7) and treat [12:9] purely as drive strength;
+the vendor kernel rejects a `slew-rate` property outright. Only mainline
+Linux reads bits [12:11] as a slew-rate selector, overlapping the top of
+the drive field. The user manual gives no MFPR field description. **[POLICY]**
+Mainline maps the devicetree `slew-rate` values like this:
 
 | `slew-rate` | Register effect |
 |---|---|
@@ -110,9 +121,9 @@ values map like this:
 drive code already implies. A different driver may choose its own
 precedence, but cannot set the two independently.
 
-> OPEN QUESTION: Whether bits [12:11] mean "slew rate" or "drive strength"
-> to the pad when `SLEW_EN` is 0. The sources only show that they are
-> shared.
+> OPEN QUESTION: Whether bits [12:11] select a slew rate at all, or are
+> only the upper drive-strength bits. A safe driver sets `SLEW_EN` only
+> when a board asks for it, and takes [12:9] from the drive table.
 
 ### 2.2.1 Drive strength
 
@@ -142,21 +153,40 @@ a GPIO is 3.
 
 **[HW]** Each pad has a fixed supply class:
 
-| Pin IDs | Supply | Default function for GPIO use |
+| Pin IDs | Supply | GPIO function |
 |---|---|---|
-| 0–41 | switchable 1.8 V / 3.3 V | 0 |
-| 42–75 | fixed 1.8 V | 0 |
-| 76–127 | switchable 1.8 V / 3.3 V | 0 |
-| 128–131 | fixed 1.8 V | 0 |
-| 132–144 | switchable 1.8 V / 3.3 V | 1 |
-| 145–152 | fixed 1.8 V | 1 |
+| 0–41 | switchable 1.8 V / 3.3 V | 0: GPIO line = pin ID |
+| 42–75 | fixed 1.8 V | 0: GPIO line = pin ID |
+| 76–127 | switchable 1.8 V / 3.3 V | 0: GPIO line = pin ID |
+| 128–131 | fixed 1.8 V | none |
+| 132–144 | switchable 1.8 V / 3.3 V | 1: an alternate pad for a lower GPIO line (table below) |
+| 145–152 | fixed 1.8 V | 1: an alternate pad for a lower GPIO line (table below) |
 
-The last column is the function number that selects plain GPIO on that pad.
+**[HW]** Pads 128–131 (`PWR_SCL`, `PWR_SDA`, `VCXO_EN`, `PMIC_INT_N`) cannot
+be GPIOs, per the user manual's pad function tables. Function 1 on
+`PWR_SCL`/`PWR_SDA` is the real-time domain's power I2C. Both Linux
+drivers list function 0 as "GPIO" for these pads, which is wrong; never
+offer them as GPIO.
 
-> OPEN QUESTION: Pins 128–152 have a GPIO function number, but the GPIO
-> block (§2.4) has only 128 lines and its ranges map to pins 0–127. Which
-> GPIO controller, if any, serves pads 128–152 is not shown. The manual's
-> secure GPIO and audio GPIO instances (§2.4.1) are candidates.
+**[HW]** On pads 132–152, function 1 routes a line of the main GPIO block
+(§2.4) to that pad as a second place it can appear:
+
+| Pads (pin IDs) | GPIO lines |
+|---|---|
+| `QSPI_DAT0`–`DAT3` (138–141) | 3, 2, 1, 0 |
+| `QSPI_CS0`, `QSPI_CS1`, `QSPI_CLK` (142–144) | 5, 6, 4 |
+| `MMC1_DAT3`–`DAT0`, `MMC1_CMD`, `MMC1_CLK` (132–137) | 93–98 |
+| `PWR_SSP_TXD`, `RXD`, `SCLK`, `FRM` (151, 152, 149, 150) | 120, 121, 122, 123 |
+| `PRI_TDI`, `TMS`, `TCK`, `TDO` (145–148) | 124–127 |
+
+The devicetree `gpio-ranges` only map GPIO line *n* to pin *n*. Using an
+alternate pad means muxing it explicitly in a pin group.
+
+> OPEN QUESTION: What happens when both the primary pad and an alternate
+> pad select the same GPIO line (which input wins, and whether both drive).
+
+Many pads also have an `R.GPIO[n]` function (usually function 3). That is
+the real-time domain's GPIO block (§2.4.1), not the main one.
 
 For "switchable" pads, the voltage the board actually supplies is given in
 the devicetree with `power-source` (1800 or 3300). The pad's I/O
@@ -198,7 +228,10 @@ from the board's `power-source` value, and only for groups that the board
 description covers.
 
 **[ABI]** The pin controller node carries `spacemit,apbc`, a phandle to the
-APBC syscon, to locate the unlock registers. [POLICY] Without that
+APBC syscon, to locate the unlock registers. *(vendor)* The vendor
+devicetree instead gives the pin controller a second `reg` window,
+`0xD401E800` size `0x34`, for the power-domain registers, and passes the
+unlock offset `0x50` as an argument to the `spacemit,apbc` phandle. [POLICY] Without that
 property Linux skips voltage programming and leaves whatever the firmware
 set.
 
@@ -246,7 +279,7 @@ Offsets from the bank base. All registers are 32 bits, one bit per line.
 | `0x2C` | `SFER` | WO | Write 1 to set the `FER` bit |
 | `0x30` | `CFER` | WO | Write 1 to clear the `FER` bit |
 | `0x34` | `APMASK` | RW | Interrupt mask for the application processor: 1 = edge detect on this line raises the interrupt, 0 = masked. Reset value 0. |
-| `0x38` | `CPMASK` | RW | Interrupt mask for another processor |
+| `0x38` | `CPMASK` | RW | Same format as `APMASK` (1 = not masked, reset 0), for a second interrupt output |
 
 **[HW]** The output-set and output-clear registers cannot be read back. To
 learn the driven level, read `PLR`.
@@ -254,13 +287,18 @@ learn the driven level, read `PLR`.
 The K1 has the same registers at a 12-byte stride with banks at `0x0`,
 `0x4`, `0x8`, `0x100`. K3 packs each bank's registers contiguously.
 
-> OPEN QUESTION: `CPMASK` is undocumented in the manual and untouched by
-> mainline. Presumably it routes edge interrupts to a co-processor (the
-> real-time CPU). Leave it at its reset value.
+No Linux driver or the UEFI firmware writes `CPMASK`. The user manual's
+real-time CPU interrupt table has "GPIO" and "GPIO edge" sources (93, 94).
+`CPMASK` very likely gates the GPIO interrupt to that CPU. **[POLICY]**
+Leave it at its reset value of 0.
 
-The manual also lists GPIO blocks with the same layout at `0xC0889400`
-(audio subsystem) and `0xF0619000` (secure domain). Neither appears in the
-mainline devicetree.
+Other GPIO blocks with the same register layout, none of them in the
+mainline or vendor devicetrees:
+
+| Block | Base | Edge block | Interrupt |
+|---|---|---|---|
+| Real-time domain GPIO (`R.GPIO` pad functions) | `0xC0889400` | `0xC0889800` | real-time domain interrupt controller |
+| Secure GPIO | `0xF0619000` | — | probably APLIC 59 |
 
 ### 2.4.2 Interrupts
 
@@ -276,6 +314,11 @@ mainline devicetree.
   in the MFPR (§2.5).
 - **[ABI]** `#interrupt-cells` and `#gpio-cells` are both 3: bank, line
   within the bank, flags. Level trigger types are invalid.
+
+> OPEN QUESTION: The user manual says GPIO lines 0 and 1 each have their
+> own interrupt. The K3 interrupt table lists no such sources, so this
+> text is probably carried over from an older chip. Assume the single
+> shared line.
 
 **[POLICY]** Linux's sequence, given as a model:
 
@@ -293,28 +336,53 @@ enables on and rely on `APMASK` alone.
 
 ### 2.4.3 Using a pad as GPIO
 
-1. **[HW]** Set the pad's `MUX` to the GPIO function number for that pad
-   (§2.2.2): 0 for pins 0–131, 1 for pins 132–152.
+1. **[HW]** Set the pad's `MUX` to function 0 (pins 0–127 carry GPIO line
+   = pin ID). Function 1 on pins 132–152 routes a GPIO line to an
+   alternate pad (§2.2.2).
 2. Set bias and drive in the same MFPR as needed.
 3. Set direction with `SDR` or `CDR`, and level with `PSR` or `PCR`.
 
-[POLICY] When a line is claimed as GPIO, Linux writes the whole MFPR with
-only the GPIO function number, which clears any bias, drive and edge
-settings in that register. The UEFI firmware instead sets function 0,
-drive code 3 and `EDGE_CLEAR` (bit 6), and keeps the pull it was asked
-for. Either works; keeping the board's configured bias is the safer
-choice.
+[POLICY] When a line is claimed as GPIO, mainline Linux writes the whole
+MFPR with only the GPIO function number, which clears any bias, drive and
+edge settings in that register. The vendor kernel changes only `MUX`. The
+UEFI firmware sets function 0, drive code 3 and `EDGE_CLEAR` (bit 6), and
+keeps the pull it was asked for. Changing only `MUX` is the safer choice.
 
 ## 2.5 Pad edge detect (wake-up)
 
-**[HW]** The MFPR's `EDGE_RISE`, `EDGE_FALL` and `EDGE_CLEAR` bits feed a
-wake-up path in the power management unit, separate from the GPIO block.
-The manual's pad tables mark which pads support it. Mainline does not use
-these bits.
+**[HW]** Each pad can latch an edge independently of the GPIO block, for
+wake-up. The user manual's pad tables mark which pads support it.
 
-> OPEN QUESTION: Where pad edge-detect status is read and how it routes
-> to a wake-up interrupt on K3. Neither mainline nor the vendor firmware
-> shows the status register.
+| Item | Value |
+|---|---|
+| Edge enables | MFPR bits 4 (rising) and 5 (falling) |
+| Clear / hold-off | MFPR bit 6 (§2.2): set to clear the latch and hold it clear, clear to arm |
+| Status | "GPIO Edge" block at `0xD4019800` (0x800 window). One read-only 32-bit word per 32 pins at `+4 × (pin ÷ 32)`, bit `pin mod 32`. |
+| Interrupt | APLIC source 60, level-high. It stays asserted while any armed pad has a latched edge. |
+
+**[HW]** Writing to the status word does not clear it. The only way to drop
+the interrupt is to set bit 6 on each pad whose status bit is set. A pad
+that latches an edge with nobody handling it holds the interrupt
+asserted, so the handler must clear every set status bit, including ones
+it does not expect.
+
+Sequence to use a pad as a wake source:
+
+1. Set bit 6, then set bit 4 and/or 5 for the wanted edges.
+2. Clear bit 6 to arm the pad.
+3. On interrupt 60, read the status words. For each set bit, handle the
+   pad, then set its bit 6 (and clear it again to re-arm).
+
+*(vendor)* Mainline does not use any of this. The vendor devicetree makes
+the pin controller an interrupt controller (`#interrupt-cells` = 2, parent
+interrupt 60) and points it at the edge block with a `spacemit,gpio-edge`
+syscon phandle covering only 16 bytes. Its boards use the pin controller as
+interrupt parent for wake-up pins. These properties are not in the mainline
+binding.
+
+> OPEN QUESTION: Whether status bits above pin 130 follow the pin ID (as
+> the vendor kernel assumes) or the pad register index. The vendor kernel
+> also reads six status words while mapping only four.
 
 ## 2.6 What the devicetree gives the driver
 
