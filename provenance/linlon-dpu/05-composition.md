@@ -11,3 +11,5 @@
   - drivers/gpu/drm/arm/display/komeda/komeda_pipeline.c: 294-305 (right-layer pairing)
   - drivers/gpu/drm/arm/display/komeda/komeda_wb_connector.c: 10-63, 113-140 (write-back data flow, connector only with wb_layer)
   - drivers/gpu/drm/arm/display/komeda/d71/d71_regs.h: 512-522 (scaler and merger constants)
+- Second pass, 2026-10-27, Sky1-Linux sources (see SOURCE-BASELINE.md):
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: hw/dp_component.c 787-840 (right-part scaler crop), drivers/gpu/drm/cix/linlon-dp/linlondp_pipeline_state.c 685-760 (compositor size and input size in side-by-side)

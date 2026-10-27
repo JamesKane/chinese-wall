@@ -20,11 +20,16 @@ Everything in this spec is therefore the **D71 programming model**, which the
 D6 is stated to accept. Features the D6 may have beyond the D71 are not
 described anywhere in the source.
 
-> OPEN QUESTION: The D6's extra capabilities (more layers per pipeline,
-> wider lines, HDR or tone mapping, more than two pipelines) are unknown. A
-> clean-room driver should read the self-description registers
+- The CIX vendor driver for the D6 (shipped by the Sky1-Linux project) is a
+  fork of the same D71 code with D6 additions. Those additions are folded
+  into this spec and marked *(vendor)*: a changed AXI control layout,
+  2 pixels per clock, side-by-side composition, per-layer degamma/matrix/
+  gamma, display degamma, and RGB→YUV matrices (summary in 08 §8.7).
+
+> OPEN QUESTION: Further D6 capabilities that neither driver uses are still
+> unknown. A clean-room driver should read the self-description registers
 > (`GLB_CORE_INFO`, `GCU_CONFIGURATION_ID0/1`, per-block `BLOCK_INFO`) and
-> refuse any block type it does not recognise, as described in 03 §3.2.
+> skip any block type it does not recognise, as described in 03 §3.2.
 
 ## 0.2 Block architecture
 

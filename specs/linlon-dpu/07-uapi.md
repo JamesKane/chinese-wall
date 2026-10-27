@@ -98,7 +98,26 @@ Plane properties:
 | `[25:23]` | Rich layers per pipeline (pipeline 0) |
 | `[31:26]` | 0 |
 
-## 7.7 Debug interfaces (informative)
+## 7.7 The CIX vendor driver's interface (informative)
+
+Sky1 distributions currently ship the CIX vendor driver, not mainline. Its
+userspace interface differs. Nothing here is required for mainline-style
+compatibility, but userspace tuned for Sky1 may expect it:
+
+| Item | Vendor driver |
+|---|---|
+| DRM driver name | `"linlondp"` |
+| Extra plane properties | `PLANE_DEGAMMA_LUT` + `PLANE_DEGAMMA_LUT_SIZE`, `PLANE_CTM`, `PLANE_CTM_EXT` (12 × S31.32), `PLANE_GAMMA_LUT` + `PLANE_GAMMA_LUT_SIZE`, `LAYER_SPLIT` (bool) |
+| Extra CRTC properties | `CTM_EXT` (12 × S31.32), a protected-mode bool, degamma LUT |
+| Write-back connector | `COLOR_ENCODING`, `COLOR_RANGE` |
+| Sysfs | adds `aclk_freq_fixed` (read/write, Hz) |
+| HDR | an EOTF enum with none / ST 2084 (PQ) / HLG |
+
+> OPEN QUESTION: Whether Sky1 userspace (the Sky1-Linux KWin fork, Mesa
+> kmsro) keys on `"linlondp"` rather than `"komeda"` should be checked
+> before choosing the driver name.
+
+## 7.8 Debug interfaces (informative)
 
 - **[POLICY]** debugfs `komeda/register` dumps registers. `komeda/err_verbosity`
   selects which error events are logged. These are not ABI.

@@ -13,3 +13,12 @@
   - git grep -il sky1 over drivers/ and Documentation/devicetree (no display or DP driver/binding)
   - Cross-reference: specs/panthor/11-cix-sky1.md (SCMI transport facts)
   - Not read: any vendor (CIX/Radxa) BSP kernel, ACPI tables, SCMI firmware.
+- Second pass, 2026-10-27, Sky1-Linux sources (see SOURCE-BASELINE.md):
+  - Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 (branch main) arch/arm64/boot/dts/cix/sky1.dtsi and sky1-orion-o6.dts (BSD-3-Clause, (C) Cix Technology): sky1.dtsi 105-109 (aliases), 490-512 (dpu_gop reserved memory), 649-660 (smmu_mmhub), 2600-2835 (dpu0-4, aeu0-4), 2836-2980 (dp0-4 reg/irq/clocks/resets/phys), 3198-3203 (src reset controller), 3708-3711 (smc_devpd)
+  - Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 (branch main) arch/arm64/boot/dts/cix/sky1.dtsi and sky1-orion-o6.dts (BSD-3-Clause, (C) Cix Technology): sky1-orion-o6.dts 1100-1440 (DP/DPU endpoints, aclk_freq_fixed, AXI properties, eDP panel on dp2, AEU disabled)
+  - Sky1-Linux/linux-sky1 patches/0038 (IORT SIDs, GOP RMR 8 MiB), patches/0034 (dma-coherent SMMUs): commit messages and diffs
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: drivers/gpu/drm/cix/linlon-dp/linlondp_dev.c 383-410 (resets), 594-660 (SMC GOP query, enabled_by_gop), drivers/gpu/drm/cix/linlon-dp/linlondp_dev.h 48-52 (SMC IDs/bit), drivers/gpu/drm/cix/linlon-dp/linlondp_drv.c 75-90, 235-240 (GOP runtime-PM, ACPI HID CIXH5010)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: drivers/gpu/drm/cix/linlon-dp/linlondp_crtc.c 361-420 (GOP takeover and ip_reset pulse), 592-610 (smart aclk), 646-690 (pixel-clock thresholds)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: hw/dp_component.c 1628-1696 (firmware takeover register sequence, mode comparison)
+  - Sky1-Linux/linux-sky1 config/config.sky1 6184-6193 (DRM_LINLONDP_CLOCK_FIXED not set)
+  - Not read: the Trilinear DPTX driver beyond file list and DT nodes; IORT table itself (only the patch author's summary)

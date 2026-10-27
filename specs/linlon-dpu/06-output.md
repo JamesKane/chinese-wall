@@ -73,6 +73,15 @@ On every commit:
 > 64 used just below) is taken as found. It may be a deliberate density
 > change or an error in the source.
 
+### 6.2.3 Display degamma *(Linlon-D6, vendor)*
+
+- **[HW]** `IPS_CONTROL.IT` (bit 1) enables an input-transform (degamma)
+  stage in the IPS. The vendor driver sets it when a CRTC degamma LUT is
+  supplied and offers a degamma LUT property. Mainline offers none.
+- **[POLICY]** *(vendor)* The vendor CRTC also offers a 12-entry
+  `CTM_EXT` blob (3×4: matrix plus offsets, S31.32 each). Only the first 9
+  entries reach the hardware, converted as in §6.2.1.
+
 ## 6.3 Output colour format and depth
 
 Chosen at each modeset from the sink's capabilities (**[POLICY]**):
@@ -95,6 +104,12 @@ Chosen at each modeset from the sink's capabilities (**[POLICY]**):
 | YCbCr 4:2:0 | 1 | 1 | 1 |
 
 `IPS_DEPTH[3:0]` = the depth (8 or 10).
+
+- **[HW]** When `YUV` is set, load `IPS_RGB_YUV_COEFF0–11` with an RGB→YUV
+  matrix (04 §4.8.1 format). *(vendor)* The vendor driver always uses
+  BT.601 limited range for the display output.
+- **[HW]** *(vendor)* `IPS_CONTROL.DITH` (bit 12) is set when dithering is
+  requested (a vendor debug option).
 
 ## 6.4 Timing generator (BS)
 
@@ -147,6 +162,29 @@ From the adjusted mode (horizontal values already halved for dual-link):
 - **[HW]** Per-display width is also limited by the compositor's maximum
   line (05 §5.1.4) and the layers' line sizes (04 §4.7).
 
+### 6.4.4 Two pixels per clock *(Linlon-D6, vendor)*
+
+- **[HW]** `BS_CONTROL[22:21]` = 1 makes the timing generator emit **two
+  pixels per pixel-clock cycle**. All horizontal timing values (active
+  width, sync start, sync end, total) and the pixel clock are then divided
+  by 2, the same way as for dual-link (§6.4.1). Dual-link and 2 pixels per
+  clock multiply: the divisor is 2 × 2 = 4 when both are used.
+- **[HW]** `BS_ACTIVESIZE` horizontal is the active width in **clock
+  cycles**. With a merged side-by-side image (§6.6) at 2 pixels per clock
+  that is half the screen width. Without the image merge but at 2 pixels
+  per clock, double it back (the vendor driver multiplies by 2). With the
+  merge at 1 pixel per clock, halve it.
+- **[POLICY]** *(vendor)* A pipeline at 1 pixel per clock is limited to a
+  600 MHz pixel clock. Modes between 600 and 1200 MHz switch to 2 pixels
+  per clock **with side-by-side** (§6.6). Modes ≥ 1200 MHz are rejected.
+  A devicetree property `pixel_per_cycle` on a pipeline node can force 1
+  or 2.
+
+> OPEN QUESTION: Whether 2 pixels per clock can be used without
+> side-by-side (one pipeline producing two pixels per cycle) is unclear.
+> The vendor driver always pairs them automatically, but handles the
+> unmerged case in its active-width arithmetic.
+
 ## 6.5 Clock requirements
 
 - **[HW]** `pxclk` (per pipeline) = adjusted pixel clock (halved for
@@ -159,3 +197,51 @@ From the adjusted mode (horizontal values already halved for dual-link):
   with a higher requirement does not raise it. The mode check for the
   second display still compares against what the clock **could** reach.
   A clean-room driver should compute `aclk` from all active displays.
+- **[POLICY]** *(vendor)* On Sky1 `aclk` is fixed at 800 MHz (08 §8.3),
+  which sidesteps this. In side-by-side mode the vendor driver does **not**
+  double the `aclk` minimum even on a dual-link pipeline.
+- **[POLICY]** *(vendor)* The vendor mode check accepts a pixel clock when
+  the clock provider's rounded rate is **≥** the request, not only equal.
+
+## 6.6 Side-by-side composition *(Linlon-D6, vendor)*
+
+Used for very high pixel rates (§6.4.4). Two pipelines, master M and slave
+S, each compose **half** of the screen. The output is a single display
+driven by M.
+
+**[HW]** data path:
+
+```
+ M layers → M compositor → M IPS input 0 ─┐
+                                         ├→ M IPS (SBS, IM) → M BS → output
+ S layers → S compositor → S IPS ─→ M IPS input 1
+```
+
+- Each compositor's size is (screen width ÷ 2) × screen height (plus an
+  optional overlap that the vendor driver leaves at 0).
+- **[HW]** S's IPS is programmed like a normal IPS with its own input from
+  S's compositor. M's IPS takes M's compositor on input 0 and S's IPS on
+  input 1, with `IPS_CONTROL.SBS` set. `IPS_CONTROL.IM` (image merge) is
+  also set unless M is dual-link (with dual-link, each link carries one
+  half instead).
+- **[HW]** Only M's timing generator runs. It is programmed per §6.4.4.
+- **[POLICY]** *(vendor)* Each plane is split at the screen's midline. The
+  left part goes to a layer of M and the right part to the layer with the
+  **same index** in S. A plane wholly on one side uses one layer. If the
+  plane is scaled, each half's source width is proportional to its share of
+  the on-screen width, plus the scaler overlap (8, plus 1 with the
+  enhancer, 05 §5.3.1), and each scaler crops the overlap on the inner edge
+  (M crops on the right, S on the left). Compositor input sizes exclude
+  that crop.
+- **[POLICY]** *(vendor)* Side-by-side can also be fixed in devicetree
+  (`side_by_side_master = <pipeline index>`). Otherwise it is switched on
+  and off automatically when a mode crosses the 600 MHz threshold, and the
+  CRTC master/slave assignments are recomputed. The number of CRTCs does
+  not change, but while side-by-side is on the slave pipeline is busy, so
+  the DPU's second output cannot be used at the same time.
+- **[POLICY]** *(vendor)* Write-back in side-by-side mode has its own
+  path (write-back of both halves). It is not described here.
+
+> OPEN QUESTION: Exact placement of the right-half crop when scaling in
+> side-by-side (the vendor code carries FIXME notes there) should be
+> checked on hardware.

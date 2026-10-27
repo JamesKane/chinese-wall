@@ -12,3 +12,7 @@
   - drivers/gpu/drm/arm/display/komeda/komeda_color_mgmt.c: 10-67 (YUV->RGB tables; values reproduced as numeric constants)
   - drivers/gpu/drm/arm/display/komeda/komeda_pipeline_state.c: 273-430 (layer check, AFBC crop, rotation swap, WB layer)
   - include/uapi/drm/drm_fourcc.h (MIT): FourCC codes and AFBC modifier names (public)
+- Second pass, 2026-10-27, Sky1-Linux sources (see SOURCE-BASELINE.md):
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: hw/dp_component.c 212-310 (per-layer colour pipeline, PALPHA write, TBU_EN), 517-560 (WB RGB->YUV), 440-470 (layer colour capability from LAYER_INFO)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: drivers/gpu/drm/cix/linlon-dp/linlondp_color_mgmt.c 14-90 (YUV<->RGB tables; numeric constants), 92-212 (gamma/degamma sample points, 16->12 bit rounding)
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: drivers/gpu/drm/cix/linlon-dp/linlondp_wb_connector.c 280-320 (write-back COLOR_ENCODING/RANGE)

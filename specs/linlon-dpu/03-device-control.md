@@ -103,6 +103,14 @@ Mode transitions used:
   and the page-flip event delivered.
 - **[POLICY]** Linux flushes after every commit, even with no change, and
   waits up to 1 s for `CVAL`. On timeout it logs an error and continues.
+- **[HW]** *(vendor)* On the Linlon-D6 the written `CVAL` bit reads back as
+  1 until the hardware has latched the state, then 0. Polling it is an
+  alternative to the interrupt (the vendor firmware-handover path polls 50
+  times, 1–10 ms apart).
+- **[POLICY]** *(vendor)* The vendor driver waits at most **3 frame
+  times** for flip done. On timeout it issues a GCU soft reset
+  (read-modify-write setting `GCU_CONTROL.SRST`) and completes the pending
+  event anyway.
 
 > OPEN QUESTION: The source does not say whether a second `CONFIG_VALID`
 > write before `CVAL` fires is safe. Linux always waits for completion

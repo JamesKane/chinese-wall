@@ -10,3 +10,5 @@
   - drivers/gpu/drm/arm/display/komeda/d71/d71_dev.c: 349-466 (discovery; two-phase-disable rationale), 618-644 (identify)
   - drivers/gpu/drm/arm/display/komeda/komeda_pipeline.c: 332-344 (slave pipeline rule)
   - Documentation/devicetree/bindings/display/arm,komeda.yaml (GPL-2.0-only OR BSD-2-Clause): all
+- Second pass, 2026-10-27, Sky1-Linux sources (see SOURCE-BASELINE.md):
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: hw/dp_dev.c 677-700 (accepted product IDs); diff of hw/dp_regs.h, hw/dp_dev.c, hw/dp_component.c against mainline d71_* (to list D6 additions)

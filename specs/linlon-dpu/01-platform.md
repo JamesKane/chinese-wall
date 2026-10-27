@@ -89,9 +89,10 @@ Source: the public devicetree binding for the "Arm Komeda display processor"
 - **[POLICY]** Linux decides "addresses are virtual" per framebuffer, using
   only whether the device has an IOMMU domain.
 
-> OPEN QUESTION: Whether a DPU with no integrated TBU but behind an external
-> SMMU still needs the per-layer TBU-enable bit is not clear. Linux sets the
-> bit whenever an IOMMU domain exists, whatever the TBU capability.
+- **[HW]** *(vendor)* The per-layer TBU-enable bit is for the **integrated**
+  TBUs only. Behind an external SMMU with no integrated TBU, leave it 0.
+  (Mainline Linux sets it whenever an IOMMU domain exists. The CIX vendor
+  driver sets it only when the integrated-TBU capability bit is also set.)
 
 ## 1.6 Power management
 
@@ -108,6 +109,9 @@ Suspend is the reverse: disconnect the TBUs, mask interrupts, gate `aclk`.
 - **[POLICY]** Linux holds a runtime-PM reference while any display is on,
   and reruns the resume sequence after system suspend only if the device
   was not already runtime-suspended.
+- **[HW]** The binding has no `resets` property. The Sky1 vendor
+  devicetree adds `resets`/`reset-names` (`"rcsu_reset"`, `"ip_reset"`);
+  see 08 §8.4.
 - **[POLICY]** At probe, Linux enables `aclk` only for identification and
   block discovery and gates it again before registering the display
   device.

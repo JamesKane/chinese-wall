@@ -11,3 +11,6 @@
   - drivers/gpu/drm/arm/display/komeda/komeda_pipeline.c: 325-329 (dual-link ignored without support)
   - drivers/gpu/drm/arm/display/komeda/komeda_framebuffer.c: 202 (is_va from IOMMU presence)
   - drivers/gpu/drm/arm/display/komeda/komeda_kms.c: 248-250 (shared IRQ)
+- Second pass, 2026-10-27, Sky1-Linux sources (see SOURCE-BASELINE.md):
+  - Sky1-Linux/linux-sky1@57e018a398248d7e5e4d798610df79a557c0629f patches/0005 (drivers/gpu/drm/cix/linlon-dp, GPL-2.0, (C) Arm Technology (China)), applied to an empty tree; line numbers refer to the applied files: hw/dp_component.c 251-310 (TBU_EN only with integrated TBU)
+  - Sky1-Linux/linux@665339c3109ba8fbce67aca29e5327e134d6b2b6 (branch main) arch/arm64/boot/dts/cix/sky1.dtsi and sky1-orion-o6.dts (BSD-3-Clause, (C) Cix Technology): dpu0-4 nodes (resets/reset-names)

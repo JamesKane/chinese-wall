@@ -1,149 +1,209 @@
 # 08: CIX Sky1 Integration
 
-This section covers what is known about the Linlon-D6 instances in the
-**CIX Sky1** SoC (Radxa Orion O6 and similar boards).
+This section covers the Linlon-D6 instances in the **CIX Sky1** SoC (Radxa
+Orion O6, Orange Pi 6 Plus and similar boards).
 
-> **Status: partial.** At the source baseline, mainline has **no Sky1
-> display devicetree node**: no DPU node, no DisplayPort controller node,
-> and no driver for the Sky1 DisplayPort controller or PHY. The DPU driver
-> accepts the Linlon-D6 compatible, and the Sky1 headers fix the clock,
-> reset and power-domain IDs a DPU node would use. MMIO addresses,
-> interrupts, IOMMU stream IDs and the encoder are not known.
+Sources: the mainline Sky1 headers, plus the community Sky1-Linux
+devicetree (CIX's BSD-3-Clause SoC and board files) and the CIX vendor DPU
+driver it ships. Facts that come only from the vendor driver are marked
+*(vendor)*. They describe what the shipping driver does on this silicon,
+which is stronger evidence than the D71-model inference used in 00–07.
+
+> **Status:** node data complete for the DPUs. The DisplayPort controller
+> (`cix,sky1-dptx`) is out of scope (§8.8).
 
 ## 8.1 Instances
 
-The Sky1 headers give **five** display units, numbered 0–4. Each has its own
-DPU, power domain, clocks, resets and DisplayPort controller ("DPC" / "DP"):
+Sky1 has **five** identical display units, n = 0 … 4. Each has one DPU with
+**two pipelines**, a separate AFBC encoder unit, and one DisplayPort
+controller.
 
-| Unit | DPU power domain | DPU `aclk` | Pixel clocks (pipeline 0 / 1) | DP controller clocks |
-|---|---|---|---|---|
-| 0 | `SKY1_PD_DPU0` = 6 | `CLK_TREE_DPU0_ACLK` = 44 | `CLK_TREE_DP0_PIXEL0` = 33 / `CLK_TREE_DP0_PIXEL1` = 34 | `DPC0_VIDCLK0` = 49, `DPC0_VIDCLK1` = 50, `DPC0_APBCLK` = 59 |
-| 1 | `SKY1_PD_DPU1` = 7 | `CLK_TREE_DPU1_ACLK` = 45 | 35 / 36 | 51, 52, 60 |
-| 2 | `SKY1_PD_DPU2` = 8 | `CLK_TREE_DPU2_ACLK` = 46 | 37 / 38 | 53, 54, 61 |
-| 3 | `SKY1_PD_DPU3` = 9 | `CLK_TREE_DPU3_ACLK` = 47 | 39 / 40 | 55, 56, 62 |
-| 4 | `SKY1_PD_DPU4` = 10 | `CLK_TREE_DPU4_ACLK` = 48 | 41 / 42 | 57, 58, 63 |
+| Unit | DPU MMIO (128 KiB) | DPU IRQ (GIC SPI, level-high) | AEU MMIO (128 KiB) | AEU IRQ | DP controller node | DP IRQ |
+|---|---|---|---|---|---|---|
+| 0 | `0x14010000` | 316 | `0x14030000` | 317 | `0x14060000` | 332 |
+| 1 | `0x14080000` | 318 | `0x140A0000` | 319 | `0x140D0000` | 333 |
+| 2 | `0x140F0000` | 320 | `0x14110000` | 321 | `0x14140000` | 334 |
+| 3 | `0x14160000` | 322 | `0x14180000` | 323 | `0x141B0000` | 335 |
+| 4 | `0x141D0000` | 324 | `0x141F0000` | 325 | `0x14220000` | 336 |
 
-Also: `CLK_TREE_DPU_CLK` = 43 (one shared DPU clock, purpose unknown).
+- **[HW]** Each DPU node uses compatible `"armchina,linlon-d6"`. (The Sky1
+  devicetree lists it **alone**, without the `"arm,mali-d71"` fallback the
+  mainline binding requires. A mainline-conformant node would add the
+  fallback.)
+- **[HW]** The AEU (AFBC encoder for write-back, compatible
+  `"armchina,linlon-aeu"`) is a separate device with its own register window,
+  interrupt and stream ID. It shares the DPU's power domain and `aclk`.
+  It is disabled on the Orion O6 and outside this spec.
+- **[HW]** ACPI: the DPU's hardware ID is `CIXH5010` (vendor driver match
+  table). Sky1 boards normally boot with ACPI.
 
-- The two pixel clocks per unit fit a DPU with **two pipelines** (one
-  `pxclk` per `pipeline@N` node, 01 §1.1.2). The DP controller's two video
-  clocks fit a DP controller with two input streams (for example
-  multi-stream transport). Both readings come from the names only.
+## 8.2 Resources per unit n
 
-> OPEN QUESTION: Whether each Sky1 DPU really has two pipelines, and how
-> many layers and scalers each has, must be read from the hardware
-> (`GLB_CORE_INFO`, block walk; 03 §3.2).
+| Resource | Value | Notes |
+|---|---|---|
+| `aclk` | SCMI clock `CLK_TREE_DPUn_ACLK` = 44 + n | Via the SCMI clock protocol (`0x14`) |
+| `pipeline@0` `pxclk` | SCMI clock `CLK_TREE_DPn_PIXEL0` = 33 + 2n | |
+| `pipeline@1` `pxclk` | SCMI clock `CLK_TREE_DPn_PIXEL1` = 34 + 2n | |
+| Power domain | SCMI power domain `SKY1_PD_DPUn` = 6 + n, name `"dpu_pd"` | Trusted-firmware SMC agent, protocol `0x11` |
+| Resets | `"rcsu_reset"` = `SKY1_DPUn_RCSU_RESET_N`; `"ip_reset"` = `SKY1_DPU_RESETn_N` | S5 system controller at `0x16000000` (§8.4) |
+| IOMMU | `smmu_mmhub` (Arm SMMUv3 at `0x0B1B0000`), stream IDs below | |
+| Unit index | `device-id = <n>` | Vendor property |
 
-> OPEN QUESTION: Whether a Sky1 DPU node would list `CLK_TREE_DPUn_ACLK`
-> or `CLK_TREE_DPU_CLK` as `aclk` is unknown. The per-unit ACLK is the
-> likely match for the binding's single `"aclk"`.
+`CLK_TREE_DPU_CLK` (43) is not used by any node.
 
-## 8.2 Clocks
+### 8.2.1 Stream IDs
 
-- **[HW]** All IDs in §8.1 are **SCMI clock-protocol** identifiers (protocol
-  `0x14`, served by the power-management processor through the mailbox SCMI
-  agent; see the Panthor spec, section 11 §11.5.1, for the transport).
-- **[HW]** The DPU driver sets rates on both `aclk` and `pxclk` (01 §1.2).
-  On Sky1 these become SCMI `CLOCK_RATE_SET` requests, and mode validation
-  depends on the firmware's rate rounding (SCMI `CLOCK_DESCRIBE_RATES`).
-  The DPU's exact-rate check on `pxclk` (07 §7.5) only passes if the
-  firmware can produce the exact pixel rate or reports the rounded rate
-  honestly.
+**[HW]** Each unit owns a group of 6 consecutive SMMU stream IDs starting at
+6n:
 
-> OPEN QUESTION: Whether the SCMI firmware allows the OS to set the DP pixel
-> clock rate freely, and with what granularity, is unknown. If it only
-> offers a fixed set of rates, many modes will fail the exact-match rule,
-> and a clean-room driver may need to relax it (for example by accepting a
-> small tolerance, as DisplayPort sinks do).
+| Offset in group | Master |
+|---|---|
+| 0 | DPU, first stream |
+| 1 | DPU, second stream |
+| 2 | **AEU** |
+| 3 | DPU, third stream |
+| 4 | DPU, fourth stream |
+| 5 | DPU, fifth stream |
 
-## 8.3 Power domains
+So DPU n lists 5 IDs: 6n, 6n+1, 6n+3, 6n+4, 6n+5. The AEU uses 6n+2. This
+grouping matches the firmware's ACPI IORT table (as reported by the
+Sky1-Linux maintainers).
 
-- **[HW]** `SKY1_PD_DPU0–4` (6–10) are SCMI **power-domain** protocol
-  (`0x11`) IDs, served by the trusted-firmware SMC agent (as for the GPU's
-  `SKY1_PD_GPU`). The matching DPU domain must be on before any DPU register
-  access (01 §1.6 step 1).
-- **[HW]** The DPU's IOMMU is likely in the multimedia hub, which has its
-  own domains `SKY1_PD_MMHUB` = 4 and `SKY1_PD_MMHUB_SMMU` = 5.
+> OPEN QUESTION: Which of the 5 DPU streams carries which layer or the
+> write-back layer is not stated. By the binding's convention (01 §1.1.1)
+> they would be layers 0–3 and write-back of one pipeline, but there are two
+> pipelines and only 5 IDs. The streams may be per-AXI-port rather than per
+> layer. Grant all 5 the same translations.
 
-> OPEN QUESTION: Whether a DPU node also needs `SKY1_PD_MMHUB` or
-> `SKY1_PD_MMHUB_SMMU` listed, and whether the Sky1 DPUs sit behind an SMMU
-> at all, is not in the source.
+- **[HW]** The mmhub SMMU nodes are `dma-coherent` in the Sky1-Linux tree.
 
-## 8.4 Resets
+## 8.3 Clocks
 
-The Sky1 S5 system controller (`cix,sky1-s5-system-control`, MMIO
-`0x16000000`, 4 KiB) has these display reset lines:
+- **[POLICY]** *(vendor)* On the Orion O6, every DPU sets
+  `aclk_freq_fixed = <800000000>`: `aclk` is always requested at **800 MHz**,
+  whatever the mode. This satisfies the `aclk` ≥ pixel-clock rule for every
+  supported mode at one pixel per clock (§8.6).
+- **[POLICY]** *(vendor)* Without the fixed rate, an optional
+  "smart" table picks `aclk` from the pixel clock: ≥ 445.5 MHz → 800 MHz;
+  ≥ 297 MHz → 600 MHz; ≥ 148.5 MHz → 400 MHz; ≥ 74.25 MHz → 300 MHz;
+  otherwise 200 MHz.
+- **[HW]** The vendor driver accepts a pixel clock whose rounded rate is
+  **at least** the requested rate (not only an exact match, as in 01 §1.2).
+  This resolves the concern that SCMI clock rounding would reject modes.
 
-| Identifier | Index | Register offset | Bit |
-|---|---|---|---|
-| `SKY1_DPU_RESET0_N` … `SKY1_DPU_RESET4_N` | 19–23 | `0x400` (group 0, S0 domain word 0) | 16–20 |
-| `SKY1_DP_RESET0_N` … `SKY1_DP_RESET4_N` | 24–28 | `0x400` | 21–25 |
-| `SKY1_DP_PHY_RST_N` | 29 | `0x400` | 26 |
-| `SKY1_USB_DP_PHY0_PRST_N` … `PHY3_PRST_N` | 51–54 | `0x408` (group 1, USB PHYs) | 0–3 |
-| `SKY1_USB_DP_PHY0_RST_N` … `PHY3_RST_N` | 55–58 | `0x408` | 4–7 |
-| `SKY1_DP0_RCSU_RESET_N` … `SKY1_DP4_RCSU_RESET_N` | 105–109 | `0x800` (group 0, RCSU word) | 14–18 |
-| `SKY1_DPU0_RCSU_RESET_N` … `SKY1_DPU4_RCSU_RESET_N` | 110–114 | `0x800` | 19–23 |
+## 8.4 Resets and power
 
-- **[HW]** All lines are active-low: clearing the bit holds the block in
-  reset, setting it releases reset. A read of 0 means "in reset".
-- **[POLICY]** The Sky1 reset driver waits 50–100 µs after each assert and
-  each deassert.
-- **[HW]** The DPU binding has **no** `resets` property, and the DPU driver
-  uses only the internal soft reset (`GCU_CONTROL.SRST`, 03 §3.2). On Sky1
-  the external DPU reset must therefore already be released, by firmware or
-  by power-domain sequencing, before the driver probes.
+| Reset | S5 controller word | Bit |
+|---|---|---|
+| `SKY1_DPU_RESETn_N` ("ip_reset", index 19 + n) | `0x400` | 16 + n |
+| `SKY1_DPUn_RCSU_RESET_N` ("rcsu_reset", index 110 + n) | `0x800` | 19 + n |
 
-> OPEN QUESTION: Whether firmware releases `SKY1_DPUn_RESET_N` and
-> `SKY1_DPUn_RCSU_RESET_N` when power domain 6 + n turns on is unknown. If
-> it does not, a clean-room driver must deassert them itself (DPU reset
-> first, then RCSU, order unconfirmed) after the power domain is on and
-> before the first register read. "RCSU" is not expanded in the source.
+- **[HW]** Active-low: bit cleared = in reset.
+- **[POLICY]** *(vendor)* The driver does **not** reset the DPU at probe. It
+  relies on power-domain firmware to bring the DPU up out of reset. It
+  takes both reset lines but only ever pulses `ip_reset`, when taking over
+  from the boot firmware with a mode change (§8.5): assert, wait 1 ms,
+  deassert, wait 1 ms. `rcsu_reset` is never toggled.
+- **[HW]** Power domain 6 + n must be on before any register access
+  (01 §1.6).
 
-> OPEN QUESTION: The four "USB_DP" PHYs are combined USB/DP PHYs (USB-C
-> alternate mode). Which DPU unit drives which PHY or connector is not
-> stated.
+## 8.5 Boot-firmware (GOP) framebuffer handover
 
-## 8.5 Encoders and PHYs
+The UEFI firmware can leave DPU 0 scanning out a boot splash.
 
-- The DPU drives a parallel pixel bus into an encoder (01 §1.3). On Sky1
-  that encoder is the matching DP controller (one per unit). Its driver,
-  register map and binding are **not** in mainline at the baseline.
-- The Sky1 pin-function header lists pins for an embedded-panel power and backlight
-  interface on DP unit 2 (`DP2_DIGON`, `DP2_BLON`, `DP2_VARY_BL`), which
-  suggests unit 2 can drive an eDP panel.
+- **[HW]** Reserved memory: `0x84800000`, **8 MiB**, `no-map`, with
+  identity IOMMU mappings (`iommu-addresses`) for all five DPUs. The IORT
+  declares the same range as a reserved memory region, so the SMMU must
+  keep it identity-mapped until the OS driver takes over. (The Sky1-Linux
+  tree at one point declared 32 MiB. The IORT says 8 MiB.)
+- **[HW]** Firmware handover query: SMC (SiP service) function ID
+  `0xC200000F`, argument 1 = `1` (get). The result's bit 17 (`0x00020000`)
+  is a handover flag. Argument 1 = `2` (set) with bit 17 in argument 2
+  sets it. The vendor driver defines "set" but never calls it.
+- **[POLICY]** *(vendor)* The handover logic is:
+  1. Read the DT/ACPI property `enabled_by_gop` (0 or 1). Then query the
+     SMC. If bit 17 is set, the driver treats the display as already taken
+     over by an OS driver (it names this case "module inserted before") and
+     ignores `enabled_by_gop`.
+  2. While GOP-enabled: skip the soft reset during block discovery
+     (03 §3.2 step 1), and mark the device runtime-active at probe so the
+     power domain is not cycled.
+  3. At the first display enable: compare the requested mode's active size
+     and porches with the values in pipeline 0's `BS_ACTIVESIZE`,
+     `BS_HINTERVALS` and `BS_VINTERVALS`. If they match, keep the running
+     timing and just program the new layers. If they differ:
+     a. mask interrupts;
+     b. phase 1: disable pipeline-0 layers 0 and 2, clear `CU_INPUT_ID0`
+        and `CU_INPUT_ID1`, disable both scalers and the merger, then write
+        `GCU_CONFIG_VALID0` = 1 and poll until it reads 0;
+     c. phase 2: clear `IPS_INPUT_ID0`, disable IPS and BS, set
+        `GCU_CONFIG_VALID0` again and poll;
+     d. gate the pixel clock, pulse `ip_reset` (§8.4), and continue with a
+        normal enable (03 §3.8).
+- **[HW]** This shows the firmware splash uses pipeline 0, layers 0 and 2,
+  possibly both scalers and the merger.
 
-> OPEN QUESTION: Everything about the DP controller (identity, registers,
-> link training, HPD, audio, MST) is outside this spec. It needs its own
-> extraction once a source exists.
+> OPEN QUESTION: Who sets the SMC handover flag is not shown (the vendor
+> driver never does). A clean-room driver can avoid depending on it: check
+> whether pipeline 0's `BS_CONTROL.EN` is set at probe, and if so do the
+> takeover above.
 
-## 8.6 Devicetree status and expected node shape
+## 8.6 Output wiring and high pixel rates
 
-- **[HW]** A Sky1 DPU node would use `compatible = "armchina,linlon-d6",
-  "arm,mali-d71"` (01 §1.1.1). No Sky1-specific DPU compatible exists.
-- Expected resources per unit n, from §8.1–8.4: `clocks = <&scmi_clk
-  CLK_TREE_DPUn_ACLK>` named `"aclk"`; `power-domains = <&<SMC SCMI
-  power-domain provider> SKY1_PD_DPUn>`; per pipeline k, `clocks =
-  <&scmi_clk CLK_TREE_DPn_PIXELk>` named `"pxclk"`; a graph port to DP
-  controller n.
+- **[HW]** On the Orion O6, every DPU pipeline k drives **input port k** of
+  DP controller n: pipeline 0 → DP stream 0, pipeline 1 → DP stream 1. Each
+  pipeline has a single endpoint, so neither is dual-link. The DP
+  controller's two video clocks (`DPCn_VIDCLK0/1`) match the two streams
+  (multi-stream DP, or two halves of one wide stream, §8.7).
+- **[HW]** Board use: DP 0, 1, 3 and 4 go through the four combined USB-C/DP
+  PHYs (`usbc0`, `usbc1`, `usbc2`, `usbc3` DP PHYs). DP 2 has its own PHY
+  window and can drive an eDP panel (DP2 panel power/backlight pins).
+- **[HW]** *(vendor)* A single pipeline handles pixel clocks up to
+  **600 MHz**. For 600 MHz < pixel clock < 1200 MHz the driver switches to
+  **2 pixels per clock with side-by-side composition** (§8.7). Modes at or
+  above 1200 MHz are rejected.
 
-> OPEN QUESTION: MMIO base and size, interrupt numbers and trigger type,
-> and `iommus` stream IDs of the five DPUs are not in the baseline source.
+## 8.7 Linlon-D6 features used on Sky1 beyond the D71 model
 
-> OPEN QUESTION: Sky1 boards often boot with ACPI. The DPU driver is
-> devicetree-only. No ACPI identifier for the DPU appears in the source.
+These come from the vendor driver. They are described in register terms in
+02, 04 and 06. Summary:
 
-## 8.7 Bring-up checklist
+| Feature | Where | Summary |
+|---|---|---|
+| Different LPU AXI field layout | 02 §2.5.4 | Outstanding caps are 8 bits; cap-B enable moved to bit 22 |
+| Pixels per clock | 02 §2.15.1, 06 §6.4.4 | `BS_CONTROL[22:21]` = 1 selects 2 pixels per clock |
+| Side-by-side | 06 §6.6 | Each pipeline composes half of the screen; the master IPS merges the slave IPS output |
+| Per-layer colour pipeline | 04 §4.9 | Degamma table, 3×3 matrix and gamma table per layer, selected from shared table blocks |
+| Display degamma | 06 §6.2.3 | `IPS_CONTROL.IT` |
+| RGB→YUV matrices | 04 §4.8, 06 §6.3 | Programmed explicitly (resolves the open questions in 02 §2.7 and §2.13) |
+| Config-valid readback | 03 §3.4 | `GCU_CONFIG_VALID0/1` bit 0 reads 1 until latched |
+| Fixed block offsets | 02 §2.17 | Pipeline-0 block addresses used by the firmware handover |
 
-1. Get the DPU node data (§8.6) from a source the clean room may use.
-2. Turn on SCMI power domain 6 + n (§8.3).
-3. Make sure the DPU reset lines are released (§8.4).
-4. Enable `aclk` through SCMI clocks. Read `GLB_CORE_ID` and expect
-   product `0x0060` (03 §3.1).
-5. Soft-reset and walk the blocks (03 §3.2). Log the pipeline, layer and
-   scaler counts, PERIPH presence (expect none on a D6), line sizes and
-   capability bits. Refuse unknown block types with a clear message rather
-   than failing silently.
-6. Start with one pipeline, one linear `XRGB8888` layer, no scaling, a
-   standard mode, and check `CVAL` and `PL0` interrupts arrive (03 §3.4–3.5).
-7. Bring up the DP controller separately. The DPU only supplies pixels and
-   timing.
+- **[HW]** *(vendor)* Known product IDs in this family: `0x0080`
+  Linlon-D8, `0x0060` Linlon-D6, `0x0020` Linlon-D2. (The vendor driver
+  still decodes `GLB_CORE_ID` minor/status with the old wrong widths,
+  02 §2.3.)
+
+## 8.8 Out of scope: the DisplayPort controller
+
+For reference only (BSD-3-Clause devicetree facts). Each DP controller node
+(`cix,sky1-dptx`) has register windows `"dp"` (16 KiB at node + `0x4000`),
+`"dsc"` (16 KiB at + `0x8000`), `"dp_phy"`, and `"dp_rcsu"` (at node −
+`0x10000`), clocks `apb_clk` = `DPCn_APBCLK`, `vid_clk0/1` =
+`DPCn_VIDCLK0/1`, resets `SKY1_DPn_RCSU_RESET_N` and `SKY1_DP_RESETn_N`, and
+a property `cix,dp-max-rate` (540000 = HBR2 on the O6). The vendor driver
+is a Trilinear DPTX driver with MST, HDCP 2.x, audio and PSR. It needs its
+own extraction.
+
+## 8.9 Bring-up checklist
+
+1. Power domain 6 + n on (SCMI SMC agent). `aclk` = 800 MHz via SCMI.
+2. Do **not** soft-reset if the firmware splash is live on DPU 0 (§8.5).
+   Otherwise soft-reset and walk the blocks (03 §3.2). Expect product
+   `0x0060`, two pipelines, no PERIPH block.
+3. Map stream IDs 6n, 6n+1, 6n+3, 6n+4, 6n+5. Keep `0x84800000` + 8 MiB
+   identity-mapped until the first modeset completes.
+4. Program the AXI controls (02 §2.5.4) or leave reset values.
+5. Start with one pipeline, one linear `XRGB8888` layer at ≤ 600 MHz pixel
+   clock, check that `CVAL` and `PL0` interrupts arrive.
+6. Bring up the DP controller separately.

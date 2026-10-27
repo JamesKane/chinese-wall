@@ -112,8 +112,8 @@ Field notation: `[m:n]` is a bit range, `[n]` a single bit.
 | `0x0A0–0x0AC` | `GCU_IRQ_RAW_STATUS/CLEAR/MASK/STATUS` | | GCU interrupt (§2.3.3) |
 | `0x0B0` | `GCU_STATUS` | RO/RW | §2.3.4 |
 | `0x0D0` | `GCU_CONTROL` | RW | `[2:0]` operating mode request (§2.3.1); `[16]` `SRST` soft reset (self-clearing) |
-| `0x0D4` | `GCU_CONFIG_VALID0` | WO | `[0]` `CVAL`: latch pipeline 0's shadow registers at the next frame boundary |
-| `0x0D8` | `GCU_CONFIG_VALID1` | WO | `[0]` `CVAL`: the same for pipeline 1 |
+| `0x0D4` | `GCU_CONFIG_VALID0` | RW | `[0]` `CVAL`: write 1 to latch pipeline 0's shadow registers at the next frame boundary. On the Linlon-D6 it reads 1 until the latch has happened, then 0 *(vendor)* |
+| `0x0D8` | `GCU_CONFIG_VALID1` | RW | `[0]` `CVAL`: the same for pipeline 1 |
 | `0x100` | `GCU_CONFIGURATION_ID0` | RO | `[15:0]` maximum line size (pixels); `[31:16]` maximum number of lines. Valid only on parts **without** PERIPH |
 | `0x104` | `GCU_CONFIGURATION_ID1` | RO | `[2:0]` rich layers; `[5:3]` pipelines; `[8:6]` scalers; `[16]` dual-link (display split) supported; `[17]` integrated TBU present. Valid only on parts without PERIPH |
 
@@ -201,7 +201,8 @@ Present only if `BLOCK_INFO` at `0xFE00` reads block type `0x08`.
 | `0x0D8` | `LPU_TBU_CONTROL` | `[5:0]` TBU outstanding cap; `[16]` `TLBPEN` (TLB prefetch enable) |
 
 - **[POLICY]** Linux never writes the AXI control registers. It leaves the
-  reset values.
+  reset values. The field layout above is the D71 one. **The Linlon-D6 uses
+  a different layout (§2.5.4).**
 
 ### 2.5.1 LPU interrupt bits
 
@@ -243,6 +244,41 @@ All are sticky error flags.
 > translation-table not granted, invalid translation request, error
 > response from the TCU, and translation fault, but this is a guess.
 
+### 2.5.4 Linlon-D6 AXI control fields *(vendor)*
+
+**[HW]** On the Linlon-D6 the LPU AXI registers are laid out as follows.
+"Default" is the value the vendor driver treats as already present (it
+skips writing a value equal to it), so it is presumably the reset value.
+
+| Register | Field | Bits | Allowed values | Default |
+|---|---|---|---|---|
+| `LPU_RAXI_CONTROL` | outstanding cap A | `[7:0]` | 4 … 128 | 32 |
+| | outstanding cap B | `[15:8]` | 4 … 128 | 32 |
+| | cap-B enable | `[22]` | 0, 1 | 0 |
+| | burst length | `[21:16]` | 4, 8, 16, 32 | 16 |
+| | ARQOS | `[27:24]` | 0 … 15 | 15 |
+| | ordering | `[31]` | 0, 1 | 0 |
+| `LPU_WAXI_CONTROL` | outstanding cap | `[5:0]` | 1 … 32 | 16 |
+| | burst length | `[21:16]` | 4, 8, 16, 32 | 16 |
+| | AWQOS | `[27:24]` | 0 … 15 | 15 |
+| | ordering | `[31]` | 0, 1 | 0 |
+| `LPU_TBU_CONTROL` | TBU outstanding cap | `[5:0]` | 1 … 16 | 8 |
+| `L_CONTROL` / `LW_CONTROL` | `ARCACHE` / `AWCACHE` | `[31:28]` | 0x0, 0x1, 0x2, 0x3, 0x7, 0xA, 0xB, 0xE, 0xF | 0x3 |
+
+> OPEN QUESTION: The burst-length field is written as the plain beat count
+> (16 is written as 16, not as a code), so values above 32 would spill past
+> bit 21. The vendor source keeps the D71 bit positions for cap B in
+> comments, which suggests the move to bit 22 is a deliberate D6 change.
+
+- **[POLICY]** *(vendor)* The vendor driver reads these as optional
+  per-pipeline devicetree properties (`lpu_raxi_aoutstdcapb`,
+  `lpu_raxi_boutstdcapb`, `lpu_raxi_ben`, `lpu_raxi_burstlen`,
+  `lpu_raxi_arqos`, `lpu_raxi_ord`, `lpu_waxi_outstdcapb`,
+  `lpu_waxi_burstlen`, `lpu_waxi_awqos`, `lpu_waxi_ord`,
+  `lpu_tbu_doutstdcapb`, `lpu_l0_arcache` … `lpu_l3_arcache`,
+  `lpu_lw_arcache`) and writes them after block discovery and after each
+  resume. The Orion O6 devicetree sets exactly the defaults.
+
 ## 2.6 Read layer (type 0x10)
 
 | Offset | Name | Fields |
@@ -253,7 +289,7 @@ All are sticky error flags.
 | `0x0D0` | `L_CONTROL` | §2.6.1 |
 | `0x0D4` | `L_RICH_CONTROL` | Rich layers only. §2.6.2 |
 | `0x0D8` | `L_FORMAT` | Hardware pixel-format ID (04 §4.1) |
-| `0x0DC` | `L_IT_COEFFTAB` | Selects the input-transform coefficient table. Not written by Linux |
+| `0x0DC` | `L_LT_COEFFTAB` | `[11:0]` input-transform (degamma) table select; `[27:16]` forward-transform (gamma) table select. A select value is the table block's `BLOCK_INFO[11:4]` (low nibble of the type, then the instance). Not written by mainline Linux; used by the vendor driver (04 §4.9) |
 | `0x0E0` | `L_IN_SIZE` | `HV_SIZE`: source size |
 | `0x0E4` | `L_PALPHA` | Alpha expansion map (04 §4.4) |
 | `0x100` / `0x104` | `P0_PTR_LOW/HIGH` | Plane 0 address (AFBC: header address) |
@@ -265,16 +301,16 @@ All are sticky error flags.
 | `0x160` | `AD_CONTROL` | AFBC decoder control (§2.6.3) |
 | `0x164` | `AD_H_CROP` | `HV_CROP`: AFBC left/right crop |
 | `0x168` | `AD_V_CROP` | `HV_CROP`: AFBC top/bottom crop |
-| `0x170 + 4i`, i = 0–11 | `RGB_RGB_COEFF<i>` | RGB→RGB matrix (if `LAYER_INFO.CM`). Not written by Linux |
+| `0x170 + 4i`, i = 0–11 | `RGB_RGB_COEFF<i>` | RGB→RGB matrix (if `LAYER_INFO.CM`). Not written by mainline Linux. The vendor driver writes i = 0–8 in the same Q3.12 format as the IPS matrix (06 §6.2.1) |
 
 ### 2.6.1 `L_CONTROL`
 
 | Bits | Name | Meaning |
 |---|---|---|
 | 0 | `EN` | Layer enable |
-| 4 | `IT` | Input-transform enable (not used by Linux) |
-| 5 | `R2R` | RGB→RGB matrix enable (not used) |
-| 6 | `FT` | Forward-transform enable (not used) |
+| 4 | `IT` | Input-transform (degamma) table enable (vendor only) |
+| 5 | `R2R` | RGB→RGB matrix enable (vendor only) |
+| 6 | `FT` | Forward-transform (gamma) table enable (vendor only) |
 | `[9:8]` | `ROT` | 0 = 0°, 1 = 90°, 2 = 180°, 3 = 270° |
 | 10 | `HFLIP` | Mirror horizontally |
 | 11 | `VFLIP` | Mirror vertically |
@@ -322,9 +358,9 @@ All are sticky error flags.
 - **[HW]** The suggested reset value of `LW_CONTROL` is `0x3000FF00`
   (`AWCACHE` = 3, `LALPHA` = 0xFF, disabled).
 
-> OPEN QUESTION: Linux allows NV12 write-back but never programs the
-> RGB→YUV matrix. Either the reset matrix is a usable default (likely
-> BT.601) or NV12 write-back gives wrong colours on Linux.
+- **[HW]** For YUV output (NV12) the RGB→YUV matrix must be loaded
+  (04 §4.8). Mainline Linux does not do this. The vendor driver does, with
+  the encoding and range chosen on the write-back connector.
 
 ## 2.8 CU / compositor (type 0x02)
 
@@ -408,6 +444,7 @@ Output port 0 is the left half and port 1 the right half.
 | Bit | Name | Meaning |
 |---|---|---|
 | 0 | `RGB` | Apply the RGB→RGB matrix (CTM) |
+| 1 | `IT` | Apply an input-transform (degamma) table *(Linlon-D6, vendor)* |
 | 4 | `FT` | Apply the forward transform (gamma) table |
 | 8 | `YUV` | Convert the output to YCbCr |
 | 9 | `CHD422` | Chroma downsample to 4:2:2 |
@@ -415,12 +452,16 @@ Output port 0 is the left half and port 1 the right half.
 | 11 | `LPF` | Chroma low-pass filter (not used) |
 | 12 | `DITH` | Dithering (not used) |
 | 16 | `CLAMP` | Output clamping (not used) |
-| 17 | `SBS` | Side-by-side (not used) |
+| 17 | `SBS` | Side-by-side: input 1 carries the right half of the screen *(vendor, 06 §6.6)* |
+| 18 | `IM` | Image merge: join inputs 0 and 1 into one output stream *(Linlon-D6, vendor)* |
 
-> OPEN QUESTION: Linux enables YCbCr output without loading
-> `IPS_RGB_YUV_COEFF`. Either the reset matrix is a usable default or YCbCr
-> output colours are wrong. In practice Linux only selects YCbCr when the
-> sink does not accept RGB (06 §6.3).
+- **[HW]** YCbCr output needs `IPS_RGB_YUV_COEFF` loaded (06 §6.3).
+  Mainline Linux omits this. The vendor driver loads the BT.601
+  limited-range matrix whenever `YUV` is set.
+
+> OPEN QUESTION: How `IPS_CONTROL.IT` selects its degamma table (there is
+> no table-select register in the IPS) is not visible in the vendor source.
+> It may use a fixed table block.
 
 ## 2.14 Forward-transform coefficient table (type 0x32)
 
@@ -457,14 +498,15 @@ Output port 0 is the left half and port 1 the right half.
 | 1 | `VM` | Video mode (continuous timing). Reset value has this set (`0x00000002`) |
 | 2 | `BM` | Not used |
 | 4 | `HMASK` | Not used |
-| 5 | `VD` | Not used |
+| 5 | `VD` | Set **instead of** `VM` when the display path feeds only write-back, with no real output *(vendor)* |
 | 8 | `TE` | Tearing-effect input enable (command-mode panels; not used) |
 | 9 | `TS` | Not used |
-| 12 | `TM` | Test mode (not used) |
+| 12 | `TM` | Test pattern (vendor: debug option) |
 | 16 | `DL` | Dual-link output |
 | 17 | `SBS` | Side-by-side (not used) |
-| 18 | `CRC` | Frame CRC generation enable (not used) |
-| 20 | `PM` | Not used |
+| 18 | `CRC` | Frame CRC generation enable (vendor: debug option) |
+| 20 | `PM` | Protected mode (vendor: a CRTC property) |
+| `[22:21]` | `PPC` | Pixels per clock: 0 = 1, 1 = 2 *(Linlon-D6, vendor)* |
 
 ## 2.16 Global coefficient blocks
 
@@ -476,9 +518,40 @@ Output port 0 is the left half and port 1 the right half.
 
 - **[HW]** A global scaler coefficient table holds up to 1024 entries.
 
-- **[POLICY]** Linux never writes any global coefficient block. Scaling
-  relies on the tables the hardware provides at reset.
+- **[POLICY]** Mainline Linux never writes any global coefficient block.
+  Scaling relies on the tables the hardware provides at reset.
+- **[HW]** *(vendor)* On the Linlon-D6 each global LT block (type `0x05`)
+  holds one 65-entry curve, written as 65 consecutive words starting at
+  `0x080`. Tables are selected elsewhere by their `BLOCK_INFO[11:4]` value
+  (type `0x05` → select `0x50 + instance`). The vendor driver uses table
+  `0x50` for simple layers' degamma, `0x52` for gamma (forward transform)
+  and the others for rich layers' degamma. It shares tables among layers
+  with reference counting (one table can feed several layers only if they
+  want the same curve).
 
-> OPEN QUESTION: Whether the global scaler tables are ROM presets or RAM
-> with reset defaults, and their layout, is not described. The
-> `SC_COEFFTAB` select values in 05 §5.3.2 imply preset tables.
+> OPEN QUESTION: The global scaler tables are still never written, by
+> either driver. The `SC_COEFFTAB` select values in 05 §5.3.2 follow the
+> same "block type and instance" rule (type `0x06` → `0x60 + instance`),
+> which strongly suggests they are preset tables in scaler coefficient
+> blocks 2–6 and 10–14.
+
+## 2.17 Linlon-D6 fixed block offsets *(vendor)*
+
+The vendor driver uses these pipeline-0 block offsets directly during the
+firmware handover (08 §8.5). They are consistent with discovery order on the
+D6 and can be used as a sanity check, but a driver should still discover
+blocks (03 §3.2).
+
+| Block | Offset |
+|---|---|
+| LPU0 layer 0 | `0x0400` |
+| LPU0 layer 1 | `0x0600` |
+| LPU0 layer 2 | `0x0800` |
+| LPU0 layer 3 | `0x0A00` |
+| CU0 | `0x0E00` |
+| CU0 splitter | `0x1000` |
+| CU0 scaler 0 | `0x1200` |
+| CU0 scaler 1 | `0x1400` |
+| CU0 merger | `0x1600` |
+| DOU0 IPS | `0x1A00` |
+| DOU0 BS | `0x1E00` |

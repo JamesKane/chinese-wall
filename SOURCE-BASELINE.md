@@ -53,3 +53,16 @@ controller binding or DP driver exists at this baseline.
 The DRM atomic helpers, GEM DMA helpers and writeback framework the Linux
 driver relies on are GPL-2.0 or MIT. The clean room should not depend on
 them; the spec describes only the hardware and the KMS-visible behavior.
+
+## Sky1-Linux sources (Linlon DPU second pass)
+
+Out-of-tree sources published by the Sky1-Linux project
+(https://github.com/Sky1-Linux), read in the dirty room on 2026-10-27.
+
+| Source | Revision | Paths read | License |
+|---|---|---|---|
+| `Sky1-Linux/linux-sky1` (patch set for v6.18 LTS) | `57e018a398248d7e5e4d798610df79a557c0629f` | `patches/0005` (CIX `linlon-dp` DPU driver, file list of `dptx`), `0021`, `0034`, `0038`, `0049`; `config/config.sky1` | Driver: GPL-2.0, (C) Arm Technology (China) |
+| `Sky1-Linux/linux` branch `main` | `665339c3109ba8fbce67aca29e5327e134d6b2b6` | `arch/arm64/boot/dts/cix/sky1.dtsi`, `sky1-orion-o6.dts` | BSD-3-Clause, (C) Cix Technology |
+
+Facts taken only from these sources are marked *(vendor)* in the specs.
+

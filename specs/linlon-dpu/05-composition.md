@@ -168,6 +168,16 @@ centre, relative to the first source pixel this scaler receives):
      input is a layer, not the hardware splitter
 7. `SC_INPUT_ID0` = source input ID.
 
+- **[POLICY]** *(vendor)* For the **right half** of a split that really
+  scales, the vendor driver reprograms the output so the left crop is at
+  most 1 pixel: `SC_OUT_SIZE` width = output width − left crop (+ 1 if the
+  enhancer is on) and `SC_H_CROP` = left 1 (enhancer on) or 0, right
+  unchanged. This suggests the hardware applies the left crop poorly on the
+  right half and the phase arithmetic (§5.3.3) already skips those pixels.
+
+> OPEN QUESTION: Mainline and vendor drivers disagree on the right-half
+> crop (above). Check on hardware.
+
 ### 5.3.5 Downscaling clock requirement
 
 **[HW]** When a scaler downscales in either direction, `aclk` must be fast

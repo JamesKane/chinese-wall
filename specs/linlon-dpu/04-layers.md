@@ -144,10 +144,18 @@ rectangle (x, y, w, h in whole pixels), rotation and mirror flags.
 6. **Control.** Read-modify-write `L_CONTROL`: set `EN`, set `ROT`,
    `HFLIP` and `VFLIP` from the requested transform, and set `TBU_EN` if
    the addresses are IOMMU virtual addresses (01 §1.5).
+   - *(vendor)* The vendor driver sets `TBU_EN` only when the DPU also has
+     integrated TBUs. With an external SMMU only (as on Sky1, if
+     `GCU_CONFIGURATION_ID1[17]` reads 0), `TBU_EN` stays 0.
+   - *(vendor)* The vendor driver also sets `IT`, `R2R` and `FT` here when
+     the per-layer colour pipeline is in use (§4.9).
 
 - **[HW]** `L_PALPHA` = `0xFFAA5500` maps 2-bit alpha codes 0, 1, 2, 3 to
   8-bit alpha 0x00, 0x55, 0xAA, 0xFF (one byte per code, code 0 in the low
   byte). It is written once at initialisation.
+
+- *(vendor)* The vendor driver instead writes `L_PALPHA` = `0xFFFFFFFF` on
+  every layer update, which maps every code to opaque.
 
 > OPEN QUESTION: Whether `L_PALPHA` also governs 1-bit alpha (the 5551
 > formats) is not stated. The map gives 0x00 and 0xFF at codes 0 and 3, so
@@ -226,6 +234,8 @@ scaler or merger, 05 §5.5).
 
 1. Plane addresses, strides and `LW_FORMAT` as for a linear read layer
    (§4.4 steps 1–3).
+1a. For a YUV output format, write the RGB→YUV matrix (§4.8.1) to
+   `LW_RGB_YUV_COEFF0–11`. Mainline Linux omits this step.
 2. `LW_IN_SIZE` = output width × height.
 3. `LW_INPUT_ID0` = input ID of the upstream block.
 4. Read-modify-write `LW_CONTROL`: set `EN` and `OFM`, and set `TBU_EN` if
@@ -235,3 +245,64 @@ scaler or merger, 05 §5.5).
   64 ≤ height ≤ max lines.
 - **[HW]** The `EOW` interrupt (LPU) marks the end of the frame written.
 - **[HW]** The write-back layer has no rotation.
+
+### 4.8.1 RGB→YUV matrices
+
+**[HW]** `LW_RGB_YUV_COEFF0–11` (and `IPS_RGB_YUV_COEFF0–11`, 06 §6.3) hold
+a 3×3 matrix and an offset vector in 12 words, **12-bit fractional**
+precision (1.0 = 4096), signed:
+
+- words 0–2: Y row (R, G, B coefficients)
+- words 3–5: Cb row
+- words 6–8: Cr row
+- words 9–11: offsets added to Y, Cb, Cr on a 12-bit scale (256 = 16 × 16,
+  2048 = 128 × 16)
+
+They are the ITU-R BT.601 / BT.709 forward matrices scaled by 4096 (and by
+219/255 for limited-range luma, 224/255 for limited-range chroma). For
+comparison, the vendor driver's values are:
+
+| Encoding / range | Y row | Cb row | Cr row | Offsets |
+|---|---|---|---|---|
+| BT.601 limited | 1052, 2065, 401 | −607, −1192, 1799 | 1799, −1506, −293 | 256, 2048, 2048 |
+| BT.601 full | 1225, 2404, 467 | −691, −1357, 2048 | 2048, −1715, −333 | 0, 2048, 2048 |
+| BT.709 limited | 748, 2516, 254 | −412, −1387, 1799 | 1799, −1634, −165 | 256, 2048, 2048 |
+| BT.709 full | 871, 2929, 296 | −469, −1579, 2048 | 2048, −1860, −188 | 0, 2048, 2048 |
+
+- **[POLICY]** *(vendor)* Write-back offers COLOR_ENCODING (BT.601, BT.709)
+  and COLOR_RANGE properties on the write-back connector to pick the matrix.
+
+## 4.9 Per-layer colour pipeline *(Linlon-D6, vendor)*
+
+**[HW]** Each read layer can apply, in order: an input transform (degamma)
+curve, a 3×3 RGB matrix (layers with `LAYER_INFO.CM`), and a forward
+transform (gamma) curve. Curves live in the shared global LT blocks
+(02 §2.16).
+
+To use it on a layer:
+
+1. Load the wanted curve(s) into LT blocks: 65 words each at the block's
+   `0x080`. Load a table only when its contents change.
+2. `L_LT_COEFFTAB` = degamma table select (`[11:0]`) | gamma table select
+   (`[27:16]`), each equal to the table block's `BLOCK_INFO[11:4]`.
+3. For a matrix, write `RGB_RGB_COEFF0–8` (Q3.12, as 06 §6.2.1).
+4. Set `L_CONTROL.IT`, `.R2R` and `.FT` to enable each stage.
+
+Curve formats:
+
+| Curve | Sample points (input on a 12-bit scale, 0 … 4095) | Output |
+|---|---|---|
+| Degamma (input transform) | 64 uniform points at 0, 64, 128, … 4032, plus an end point (4096) | 12-bit |
+| Gamma (forward transform) | The 65 non-uniform points of 06 §6.2.2 | 12-bit |
+
+- **[POLICY]** *(vendor)* The vendor driver builds both from 4096-entry
+  DRM-style LUT blobs, sampling only the red channel. It converts 16-bit
+  LUT values to 12 bits by adding 8 and shifting right by 4, then clamping.
+- **[POLICY]** *(vendor)* Which LT block serves which role: `0x50` is the
+  degamma table for simple layers, `0x52` the gamma table, the rest degamma
+  tables for rich layers. Any layer, rich or simple, gets the matrix and
+  gamma stages only if its `LAYER_INFO.CM` bit is set.
+
+> OPEN QUESTION: How many LT blocks the D6 has, and so how many distinct
+> curves can be live at once, is only known by discovery. The vendor
+> driver shares one table among layers that request identical curves.
