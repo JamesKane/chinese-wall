@@ -1,0 +1,21 @@
+# Provenance: spacemit-k3/01-clocks-resets
+
+- Baseline: mainline d135ab453a7400a34930bdda1ef4bdc8acfac80e
+- Extracted: 2026-10-27 by Claude (Opus 5.5) in a Claude Code session for jkane
+- Only facts (offsets, bits, field positions, parent orderings, rate tables, polarities) taken; no code or comments copied. Every table was rebuilt from scratch in a new layout.
+- Sources read:
+  - drivers/clk/spacemit/ccu-k3.c 1-1602 (whole file, GPL-2.0-only): PLL rate tables 24-146; PLL definitions 148-163; APBS output gates 165-249; MPMU clocks 252-354; APBC clocks 356-655; APMU clocks 657-1127; DCIU clocks 1129-1134; ID-to-clock tables 1136-1559; compatibles 1561-1583
+  - drivers/clk/spacemit/ccu_pll.c 1-278 and ccu_pll.h 1-123: enable bit SWCR2[16], config field SWCR2[15:8], lock-poll interval and timeout, rate-gate requirement, init-time fallback to entry 0
+  - drivers/clk/spacemit/ccu_mix.c 1-283 and ccu_mix.h 1-235: gate (inverted variant), factor, mux, divider (field+1), FC handshake and timeouts, split-FC register variant, macro argument order used to decode field positions
+  - drivers/clk/spacemit/ccu_ddn.c 1-87 and ccu_ddn.h 1-50: fractional divider equation and field packing
+  - drivers/clk/spacemit/ccu_common.c 1-177 and ccu_common.h 1-59: MPMU phandle for lock status; reset controller exposed per syscon
+  - include/soc/spacemit/k3-syscon.h 1-274 (GPL-2.0-only): every register offset and the POSR lock bits; RCPU/APBC2 groups noted in §1.12
+  - drivers/reset/spacemit/reset-spacemit-k3.c 1-245 and reset-spacemit-common.{c,h}: per-line register, bit and polarity; four reset units
+  - include/dt-bindings/clock/spacemit,k3-clocks.h and include/dt-bindings/reset/spacemit,k3-resets.h (GPL-2.0-only OR BSD-2-Clause): binding IDs; diffed against ../freebsd-src/sys/contrib/device-tree copies (clock header stale, reset header identical)
+  - arch/riscv/boot/dts/spacemit/k3.dtsi (GPL-2.0 OR MIT) 20-60 (CPU nodes, timebase), 406-434 (fixed clocks), 771-778, 1349-1413 (syscon/PLL nodes); cpu-map; k3-com260*.dts* for board usage
+  - Documentation/devicetree/bindings/soc/spacemit/spacemit,k1-syscon.yaml, Documentation/devicetree/bindings/clock/spacemit,k1-pll.yaml (dual-licensed): K3 compatibles and the `osc` clock name
+- Derived, not read: §1.4.4 PLL word decoding. A throwaway script checked the hypothesis against all 32 rate-table entries (0 mismatches), and §1.4.4 marks the decoding as inferred.
+- Secondary pass, 2026-10-27:
+  - spacemit-com/linux-6.18@7d17e358 arch/riscv/boot/dts/spacemit/k3-cpus.dtsi (16 harts: 8 X100, 8 A100) and k3_opp_table.dtsi 20-430 (C0/C1 on X100 harts, C2/C3 on A100 harts) (GPL-2.0 OR MIT)
+  - spacemit-com/edk2-platforms@0b8b7182 Silicon/Spacemit/K3/Drivers/ClockDxe/Pll.c 15-80 (BSD-2-Clause-Patent): extra 2600 MHz triple; boot-time SWCR2 enable and output-gate mask
+  - spacemit-com/docs-chip@df43cfe4 en/key_stone/k3/k3_docs/k3_usermanual/08_cpu.md (A100 scratchpad per cluster), 17_clock_reset.md (skimmed for PLL field names; its PLL fields are marked "Decoding: TBD" and do not correspond to the SWCR layout)

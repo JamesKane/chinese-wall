@@ -127,3 +127,54 @@ Extracted in four phases on 2026-10-27 for the Radxa Dragon Q8B (Qualcomm SC8280
   - `specs/qcom-fastrpc/`: `/dev/fastrpc-cdsp` ioctl ABI, GLINK RPC buffer marshaling, and coherent SMMU compute context bank management. Note: Qualcomm's userland `quic/fastrpc` (`libcdsprpc`) is **BSD-3-Clause** and may be read directly in the clean room.
 
 Exact source files and line ranges for each specification are recorded in `provenance/qcom-sc8280xp/`, `provenance/tc956x/`, `provenance/adreno-a690/`, `provenance/qcom-mdss-dpu/`, `provenance/qcom-iris-vpu/`, and `provenance/qcom-fastrpc/`.
+
+## SpacemiT K3 / K3-CoM260 (BPI-SM10) sources
+
+Mainline at the baseline commit is primary. SpacemiT vendor sources are secondary (below).
+
+| Path | License (SPDX) |
+|------|----------------|
+| `arch/riscv/boot/dts/spacemit/k3.dtsi`, `k3-pinctrl.dtsi`, `k3-pdma.h`, `k3-com260.dtsi`, `k3-com260-ifx.dts` | GPL-2.0 OR MIT |
+| `include/dt-bindings/clock/spacemit,k3-clocks.h`, `include/dt-bindings/reset/spacemit,k3-resets.h` | GPL-2.0-only OR BSD-2-Clause |
+| `Documentation/devicetree/bindings/{soc,clock,pinctrl,gpio,mmc,i2c,mfd,net,phy,usb,spi,pwm,dma,sound}/spacemit,*.yaml` | GPL-2.0-only OR BSD-2-Clause |
+| `drivers/clk/spacemit/*`, `include/soc/spacemit/k3-syscon.h`, `drivers/reset/spacemit/*` | GPL-2.0-only (facts only) |
+| `drivers/pinctrl/spacemit/pinctrl-k1.c`, `drivers/gpio/gpio-spacemit-k1.c`, `drivers/mmc/host/sdhci-of-k1.c`, `drivers/i2c/busses/i2c-k1.c`, `drivers/regulator/spacemit-p1.c`, `drivers/rtc/rtc-spacemit-p1.c`, `drivers/net/ethernet/stmicro/stmmac/dwmac-spacemit.c`, `drivers/phy/spacemit/*`, `drivers/usb/dwc3/dwc3-generic-plat.c`, `drivers/spi/spi-spacemit-k1.c`, `drivers/spi/spi-fsl-qspi.c`, `drivers/pwm/pwm-pxa.c`, `drivers/dma/mmp_pdma.c`, `sound/soc/spacemit/k1_i2s.c` (sections 02–12, not yet read) | GPL-2.0 / GPL-2.0-only |
+
+Relevant commits: `d558af8ee0bb` (K3 CPU PLL rate tables), `cc6371a7f519`
+(K3 ACLINT nodes), `f314c98807c1` (CoM260 dldo4 always-on).
+
+At this baseline there is no K3 PCIe host, display, GPU, VPU, UFS or
+accelerator driver or devicetree node.
+
+The FreeBSD tree (`../freebsd-src` at `b9585475ee`) was read only for the
+gap analysis in `specs/spacemit-k3/README.md`. Its vendored K3 clock binding
+header predates the baseline (see spec 01).
+
+### SpacemiT secondary sources (K3 head start)
+
+Cloned 2026-10-27 into sibling directories as read-only references. Facts
+taken only from these sources are marked *(vendor)* in the specs, as for
+Sky1. Mainline remains the primary source wherever it covers a block.
+
+| Source | Local path | Revision | License | Who may read it |
+|---|---|---|---|---|
+| `spacemit-com/linux-6.18`, branch `k3-br-v1.0.y` (SpacemiT vendor kernel, Linux 6.18.3) | `../spacemit-linux-6.18` (depth 1) | `7d17e358c660f1046eb1f27f26eea33955813afd` (2026-10-15) | Drivers GPL-2.0 / GPL-2.0-only; devicetrees GPL-2.0 OR MIT | Dirty room only, except the DTs and the PowerVR driver below |
+| ↳ `drivers/gpu/drm/img-rogue/` (Imagination PowerVR Rogue DDK kernel module) | same | same | Dual MIT/GPLv2 (576 of 580 files) | **Clean room may read directly**, except `spacemit/spacemit_init.c` and `spacemit/devfreq_cooling.h`, which carry no license notice |
+| ↳ `arch/riscv/boot/dts/spacemit/k3*.dts*` | same | same | GPL-2.0 OR MIT | **Clean room may use directly** |
+| `spacemit-com/edk2-platforms`, branch `k3` (UEFI firmware: `Silicon/Spacemit`, `Platform/Spacemit`) | `../spacemit-edk2-platforms` (sparse) | `0b8b7182d8a20a771b97a487d0e6f4ab89fb3492` (2026-09-30) | BSD-2-Clause-Patent (207 files), BSD-2-Clause (6 DT files); `Platform/Spacemit/K3/AcpiTables/Dsdt/Usb.asl` has no notice | **Clean room may read directly**, except `Silicon/Spacemit/K3/Drivers/DwEqosDxe/GenphyDxeUtil.c`, which states that parts were taken from Linux `mii.c`/`phy_device.c` (GPL). The UFS driver says it follows the Linux flow; treat it as dirty-room only until reviewed. |
+| `spacemit-com/docs-chip` (`en/key_stone/k3`: K3 datasheet and user manual) | `../spacemit-docs-chip` (sparse) | `df43cfe4fbb6e1220b0bdf611d2cd233a4aa679d` (2026-10-27) | No license file; published publicly by the vendor | Public hardware documentation: **clean room may read**. Do not copy its prose into code or specs. |
+
+Vendor-kernel K3 drivers that mainline lacks (dirty-room sources for new
+spec sections): `drivers/pci/controller/dwc/pcie-spacemit.c`,
+`drivers/phy/spacemit/phy-k3-pcie.c`, `phy-k3-usb3.c`,
+`drivers/soc/spacemit/pm_domain/k3-pm_domain.c`, `drivers/thermal/k3-thermal.c`,
+`drivers/iommu/riscv/iommu-spacemit-k3.c`, `drivers/ufs/host/ufs-spacemit.c`,
+`drivers/gpu/drm/spacemit/*` (DPU, DSI, Inno DP), `drivers/mailbox/spacemit/k3-mailbox.c`,
+`drivers/remoteproc/k3-rproc.c`, `drivers/bus/spacemit-k3-espi.c`,
+`drivers/dma/adma-spacemit.c`, `drivers/net/ethernet/stmicro/stmmac/dwmac-spacemit-ethqos.c`,
+`sound/soc/spacemit/k3_ri2s.c`.
+
+The vendor devicetrees use different node labels and some different
+compatibles from mainline (for example `k3_com260.dtsi` versus mainline
+`k3-com260.dtsi`). A clean-room driver binds to the **mainline** compatibles.
+Vendor-only compatibles are recorded only when mainline has none.
